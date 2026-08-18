@@ -1,0 +1,53 @@
+{
+  "_comment": "Xebia brand colors derived from official logo (purple blob with white wordmark)",
+  "primary": {
+    "purple": "#932D8B",
+    "purple_dark": "#6B1F65",
+    "purple_light": "#B05DAA",
+    "purple_muted": "#C48ABF"
+  },
+  "neutral": {
+    "white": "#FFFFFF",
+    "off_white": "#F7F7F7",
+    "light_gray": "#E8E8E8",
+    "mid_gray": "#9E9E9E",
+    "dark_gray": "#4A4A4A",
+    "charcoal": "#2D2D2D",
+    "black": "#1A1A1A"
+  },
+  "accent": {
+    "teal": "#00A19A",
+    "blue": "#2B6CB0",
+    "green": "#38A169",
+    "orange": "#DD6B20",
+    "red": "#E53E3E"
+  },
+  "semantic": {
+    "success": "#38A169",
+    "warning": "#DD6B20",
+    "error": "#E53E3E",
+    "info": "#2B6CB0"
+  },
+  "ppt": {
+    "slide_background": "#FFFFFF",
+    "dark_slide_background": "#1A1A1A",
+    "section_divider_background": "#932D8B",
+    "title_text": "#1A1A1A",
+    "title_text_on_dark": "#FFFFFF",
+    "body_text": "#2D2D2D",
+    "body_text_on_dark": "#E8E8E8",
+    "subtitle_text": "#4A4A4A",
+    "footer_text": "#9E9E9E",
+    "chart_colors": ["#932D8B", "#00A19A", "#2B6CB0", "#38A169", "#DD6B20", "#6B1F65", "#B05DAA"]
+  },
+  "docx": {
+    "heading_color": "#1A1A1A",
+    "body_text": "#2D2D2D",
+    "accent_text": "#932D8B",
+    "table_header_bg": "#932D8B",
+    "table_header_text": "#FFFFFF",
+    "table_alt_row": "#F7F7F7",
+    "link_color": "#2B6CB0",
+    "border_color": "#E8E8E8"
+  }
+}

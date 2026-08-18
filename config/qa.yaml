@@ -1,0 +1,36 @@
+qa:
+  ppt:
+    check_file_opens: true
+    check_ooxml_validity: true
+    check_slide_order: true
+    check_missing_content: true
+    check_placeholder_text: true
+    check_text_overflow: true
+    check_shape_overlap: true
+    check_broken_images: true
+    check_low_contrast: true
+    check_alignment: true
+    check_branding: true
+    check_typography: true
+    check_footer: true
+    check_slide_numbering: true
+
+  docx:
+    check_file_opens: true
+    check_xml_validity: true
+    check_heading_hierarchy: true
+    check_toc: true
+    check_tables: true
+    check_page_breaks: true
+    check_headers_footers: true
+    check_page_numbers: true
+    check_placeholder_content: true
+    check_branding: true
+    check_typography: true
+
+  proposal:
+    check_requirements_coverage: true
+    check_storyline_coherence: true
+    check_no_legacy_customer_info: true
+    check_assumptions: true
+    check_deliverables: true

@@ -1,0 +1,14 @@
+database:
+  # PostgreSQL config — activate when installed
+  enabled: false
+  url: "${DATABASE_URL}"
+  pool_size: 5
+
+  # Fallback to JSON file storage when database is not available
+  fallback:
+    enabled: true
+    storage_dir: extracted/
+
+  migrations:
+    directory: database/migrations/
+    auto_run: false

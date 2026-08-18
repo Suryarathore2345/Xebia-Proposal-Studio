@@ -1,0 +1,32 @@
+{
+  "name": "Xebia Proposal Studio",
+  "version": "1.0.0",
+  "tagline": "Shaping Tomorrow with AI Today",
+  "copyright_template": "Copyright © {year} Xebia. All rights reserved",
+  "logo": {
+    "primary": "xebia_design_system/assets/logos/xebia_logo.png",
+    "white": "xebia_design_system/assets/logos/xebia_logo_white.png",
+    "placement": {
+      "ppt_cover": "bottom_right",
+      "ppt_footer": "bottom_left",
+      "docx_cover": "top_center",
+      "docx_header": "top_left"
+    }
+  },
+  "ppt": {
+    "cover_style": "full_bleed_image_with_overlay",
+    "section_divider_style": "purple_background_with_image",
+    "content_style": "white_background",
+    "footer": {
+      "show_copyright": true,
+      "show_slide_number": true,
+      "show_tagline": true
+    }
+  },
+  "docx": {
+    "cover_style": "logo_centered_with_purple_accent",
+    "header_style": "logo_left_line_separator",
+    "footer_style": "copyright_left_page_number_right",
+    "table_style": "purple_header_alternating_rows"
+  }
+}

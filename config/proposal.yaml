@@ -1,0 +1,26 @@
+proposal:
+  default_storyline:
+    - cover
+    - table_of_contents
+    - executive_summary
+    - corporate_overview
+    - understanding_of_scope
+    - proposed_solution
+    - architecture
+    - delivery_approach
+    - timeline
+    - team_structure
+    - commercials
+    - case_studies
+    - next_steps
+    - closing
+
+  output_formats:
+    ppt: true
+    docx: true
+    pdf: false  # generate from PPT/DOCX via LibreOffice if needed
+
+  provenance:
+    enabled: true
+    track_content_references: true
+    track_layout_references: true

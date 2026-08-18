@@ -1,0 +1,24 @@
+{
+  "ppt": {
+    "layout": "LAYOUT_16x9",
+    "canvas_width_in": 10.0,
+    "canvas_height_in": 5.625,
+    "margin_in": 0.5,
+    "content_gap_in": 0.3,
+    "section_gap_in": 0.5,
+    "footer_height_in": 0.35,
+    "header_height_in": 0.6
+  },
+  "docx": {
+    "page_size": "A4",
+    "margin_top_in": 1.0,
+    "margin_bottom_in": 1.0,
+    "margin_left_in": 1.0,
+    "margin_right_in": 1.0,
+    "paragraph_spacing_pt": 6,
+    "line_spacing": 1.15,
+    "heading_spacing_before_pt": 18,
+    "heading_spacing_after_pt": 6,
+    "table_cell_padding_in": 0.08
+  }
+}

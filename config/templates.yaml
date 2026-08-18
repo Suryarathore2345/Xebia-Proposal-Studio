@@ -1,0 +1,34 @@
+templates:
+  ppt:
+    - name: xebia_executive
+      description: Executive-level proposal deck
+      slide_count_range: [10, 20]
+      audience: CXO, VP
+
+    - name: xebia_technical
+      description: Technical proposal with architecture detail
+      slide_count_range: [15, 40]
+      audience: Technical leads, architects
+
+    - name: xebia_sales
+      description: Concise sales proposal
+      slide_count_range: [8, 15]
+      audience: Sales, procurement
+
+    - name: xebia_rfp
+      description: Formal RFP response
+      slide_count_range: [20, 60]
+      audience: Procurement, evaluation committee
+
+  docx:
+    - name: xebia_proposal
+      description: Standard proposal document
+      audience: Business stakeholders
+
+    - name: xebia_technical
+      description: Technical proposal document with architecture
+      audience: Technical stakeholders
+
+    - name: xebia_rfp
+      description: Formal RFP response document
+      audience: Procurement, evaluation committee

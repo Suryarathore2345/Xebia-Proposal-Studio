@@ -1,0 +1,104 @@
+{
+  "_comment": "Typography system — uses QA-safe fonts per PPT skill guidance",
+  "ppt": {
+    "title": {
+      "font": "Calibri",
+      "size_pt": 36,
+      "weight": "bold",
+      "color": "title_text"
+    },
+    "subtitle": {
+      "font": "Calibri",
+      "size_pt": 20,
+      "weight": "normal",
+      "color": "subtitle_text"
+    },
+    "section_header": {
+      "font": "Calibri",
+      "size_pt": 24,
+      "weight": "bold",
+      "color": "title_text"
+    },
+    "body": {
+      "font": "Calibri",
+      "size_pt": 14,
+      "weight": "normal",
+      "color": "body_text"
+    },
+    "body_bold": {
+      "font": "Calibri",
+      "size_pt": 14,
+      "weight": "bold",
+      "color": "body_text"
+    },
+    "caption": {
+      "font": "Calibri",
+      "size_pt": 10,
+      "weight": "normal",
+      "color": "footer_text"
+    },
+    "stat_number": {
+      "font": "Calibri",
+      "size_pt": 60,
+      "weight": "bold",
+      "color": "primary.purple"
+    },
+    "footer": {
+      "font": "Calibri",
+      "size_pt": 9,
+      "weight": "normal",
+      "color": "footer_text"
+    }
+  },
+  "docx": {
+    "title": {
+      "font": "Calibri",
+      "size_pt": 28,
+      "weight": "bold",
+      "color": "heading_color"
+    },
+    "heading1": {
+      "font": "Calibri",
+      "size_pt": 22,
+      "weight": "bold",
+      "color": "heading_color"
+    },
+    "heading2": {
+      "font": "Calibri",
+      "size_pt": 16,
+      "weight": "bold",
+      "color": "heading_color"
+    },
+    "heading3": {
+      "font": "Calibri",
+      "size_pt": 13,
+      "weight": "bold",
+      "color": "accent_text"
+    },
+    "body": {
+      "font": "Calibri",
+      "size_pt": 11,
+      "weight": "normal",
+      "color": "body_text",
+      "line_spacing": 1.15
+    },
+    "table_header": {
+      "font": "Calibri",
+      "size_pt": 11,
+      "weight": "bold",
+      "color": "table_header_text"
+    },
+    "table_body": {
+      "font": "Calibri",
+      "size_pt": 10,
+      "weight": "normal",
+      "color": "body_text"
+    },
+    "footer": {
+      "font": "Calibri",
+      "size_pt": 9,
+      "weight": "normal",
+      "color": "footer_text"
+    }
+  }
+}

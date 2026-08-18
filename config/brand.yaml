@@ -1,0 +1,12 @@
+brand:
+  name: Xebia
+  tagline: "Shaping Tomorrow with AI Today"
+  design_system_path: xebia_design_system/brand
+
+  logo:
+    primary: xebia_design_system/assets/logos/xebia_logo.png
+    white_variant: xebia_design_system/assets/logos/xebia_logo_white.png
+
+  guidelines:
+    strict_mode: false  # testing phase — no rigid brand enforcement
+    source: "Derived from Xebia logo and reference proposals"
