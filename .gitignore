@@ -1,0 +1,56 @@
+# Environment
+.env
+.env.*
+!.env.example
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+dist/
+build/
+.venv/
+venv/
+env/
+
+# Node
+node_modules/
+package-lock.json
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Outputs (generated proposals — don't track)
+outputs/
+proposals/working/
+proposals/review/
+
+# Extracted data (regeneratable)
+extracted/
+
+# Database
+*.sql.bak
+
+# Logs
+*.log
+
+# Reference documents (large binary files — track via LFS or keep local)
+Documents/
+references/approved/**/*.pptx
+references/approved/**/*.docx
+references/approved/**/*.pdf
+references/restricted/
+
+# Temporary
+*.tmp
+*.bak
+scratchpad/
