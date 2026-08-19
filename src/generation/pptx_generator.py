@@ -24,6 +24,7 @@ from generation.slide_builders import (
     build_team_slide,
     build_commercials_slide,
     build_closing_slide,
+    build_slide_by_layout,
 )
 
 
@@ -118,27 +119,47 @@ class ProposalPPTGenerator:
         slides = data.get("slides", [])
         if slides:
             for slide_data in slides:
-                build_content_slide(
-                    self.prs,
-                    title=slide_data.get("title", title),
-                    body_text=slide_data.get("body", ""),
-                    bullets=slide_data.get("bullets", []),
+                layout = slide_data.get("layout")
+                if layout:
+                    build_slide_by_layout(
+                        self.prs, layout, slide_data,
+                        slide_number=self._next_slide_num(),
+                    )
+                else:
+                    build_content_slide(
+                        self.prs,
+                        title=slide_data.get("title", title),
+                        body_text=slide_data.get("body", ""),
+                        bullets=slide_data.get("bullets", []),
+                        slide_number=self._next_slide_num(),
+                    )
+        else:
+            layout = data.get("layout")
+            if layout:
+                build_slide_by_layout(
+                    self.prs, layout, data,
                     slide_number=self._next_slide_num(),
                 )
-        else:
-            build_content_slide(
-                self.prs,
-                title=title,
-                body_text=data.get("body", ""),
-                bullets=data.get("bullets", []),
-                slide_number=self._next_slide_num(),
-            )
+            else:
+                build_content_slide(
+                    self.prs,
+                    title=title,
+                    body_text=data.get("body", ""),
+                    bullets=data.get("bullets", []),
+                    slide_number=self._next_slide_num(),
+                )
 
     def _build_two_col_section(self, key: str, data: dict):
         title = data.get("title", key.replace("_", " ").title())
         build_section_divider(self.prs, title, self._next_slide_num())
 
-        if data.get("left") and data.get("right"):
+        layout = data.get("layout")
+        if layout:
+            build_slide_by_layout(
+                self.prs, layout, data,
+                slide_number=self._next_slide_num(),
+            )
+        elif data.get("left") and data.get("right"):
             build_two_column_slide(
                 self.prs,
                 title=title,

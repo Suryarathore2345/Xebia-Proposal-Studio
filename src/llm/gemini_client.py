@@ -52,19 +52,34 @@ Return ONLY a JSON object (no markdown, no code fences) with this exact structur
   "sections": {
     "cover": {"title": "...", "subtitle": "...", "customer": "...", "date": "..."},
     "executive_summary": {"title": "Executive Summary", "summary": "...", "key_points": ["...", "..."]},
-    "corporate_overview": {"title": "About Xebia", "body": "...", "bullets": ["..."]},
-    "understanding_of_scope": {"title": "Understanding of Scope", "slides": [{"title": "...", "body": "...", "bullets": ["..."]}]},
-    "proposed_solution": {"title": "Proposed Solution", "left": {"title": "...", "bullets": ["..."]}, "right": {"title": "...", "bullets": ["..."]}},
-    "architecture": {"title": "Architecture", "slides": [{"title": "...", "body": "...", "bullets": ["..."]}]},
-    "delivery_approach": {"title": "Delivery Approach", "body": "...", "bullets": ["..."]},
+    "corporate_overview": {"title": "About Xebia", "layout": "icon_grid", "items": [{"label": "...", "description": "..."}, ...]},
+    "understanding_of_scope": {"title": "Understanding of Scope", "slides": [{"title": "...", "layout": "content", "body": "...", "bullets": ["..."]}]},
+    "proposed_solution": {"title": "Proposed Solution", "layout": "two_column", "left": {"title": "...", "bullets": ["..."]}, "right": {"title": "...", "bullets": ["..."]}},
+    "architecture": {"title": "Architecture", "slides": [{"title": "...", "layout": "image_placeholder", "placeholder_text": "Architecture Diagram", "caption": "..."}]},
+    "delivery_approach": {"title": "Delivery Approach", "layout": "process_flow", "steps": [{"label": "...", "description": "..."}, ...]},
     "timeline": {"title": "Timeline", "phases": [{"name": "...", "duration": "...", "description": "..."}]},
     "team_structure": {"title": "Team Structure", "members": [{"name": "...", "role": "...", "expertise": "..."}]},
     "commercials": {"title": "Investment", "rows": [{"item": "...", "hours": "...", "rate": "...", "cost": "..."}], "total": "...", "assumptions": ["..."]},
-    "case_studies": {"title": "Relevant Experience", "slides": [{"title": "...", "body": "...", "bullets": ["..."]}]},
-    "next_steps": {"title": "Next Steps", "bullets": ["..."]},
+    "case_studies": {"title": "Relevant Experience", "slides": [{"title": "...", "layout": "key_value", "pairs": [{"key": "...", "value": "..."}, ...]}]},
+    "next_steps": {"title": "Next Steps", "layout": "process_flow", "steps": [{"label": "...", "description": "..."}, ...]},
     "closing": {"title": "Thank You", "contact_name": "...", "contact_email": "...", "body": "We look forward to partnering with you."}
   }
 }
+
+SLIDE LAYOUT SELECTION:
+For sections that have a "slides" array or a single slide, you MUST choose the best "layout" for each slide from these options:
+- "content": Simple title + body text + bullet points. Use for general text-heavy content.
+- "two_column": Two side-by-side columns with headers and bullets. Use for comparisons, current vs proposed, pros vs cons.
+- "icon_grid": Grid of labeled cards. Use for capabilities, features, service offerings, scope items. Provide "items": [{"label": "...", "description": "..."}].
+- "process_flow": Numbered horizontal steps with arrows. Use for methodologies, delivery phases, workflows. Provide "steps": [{"label": "...", "description": "..."}].
+- "comparison_table": Styled table with headers. Use for feature matrices, option comparison, before/after. Provide "headers": ["..."] and "rows": [["...", "..."]].
+- "stats_highlight": Large KPI numbers with labels. Use for impact metrics, project stats, ROI figures. Provide "stats": [{"value": "98%", "label": "...", "description": "..."}].
+- "key_value": Left-right key-value rows. Use for project details, assumptions, configuration, summary facts. Provide "pairs": [{"key": "...", "value": "..."}].
+- "image_placeholder": Placeholder for diagrams/images. Use for architecture diagrams, system diagrams. Provide "placeholder_text": "..." and "caption": "...".
+- "timeline": Horizontal phase bars (only for timeline sections). Provide "phases".
+- "team": Team member cards (only for team sections). Provide "members".
+
+IMPORTANT: Vary your layout choices! Don't use "content" for everything. Pick the layout that best presents the information visually. A proposal should use at least 4-5 different layout types across its slides.
 
 WHEN ASKING QUESTIONS (not ready to generate yet):
 Return a JSON object:

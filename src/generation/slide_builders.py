@@ -746,3 +746,518 @@ def build_closing_slide(prs: Presentation, title: str = "Thank You",
     )
     _set_text(txT.text_frame, theme()["tagline"], 12, _white(),
               alignment=PP_ALIGN.RIGHT)
+
+
+# ============================================================
+# SLIDE TYPE: ICON GRID
+# ============================================================
+
+def build_icon_grid_slide(prs: Presentation, title: str,
+                          items: list[dict], slide_number: int = 0) -> None:
+    """Grid of icon cards — ideal for capabilities, scope items, features.
+
+    items: [{"icon": "🔧", "label": "...", "description": "..."}]
+    """
+    slide = prs.slides.add_slide(prs.slide_layouts[6])
+    sp = spacing()["ppt"]
+
+    txBox = slide.shapes.add_textbox(
+        Inches(sp["margin_in"]), Inches(sp["margin_in"]),
+        Inches(9), Inches(0.7)
+    )
+    _set_text(txBox.text_frame, title, 30, _black(), bold=True)
+
+    line = slide.shapes.add_shape(
+        MSO_SHAPE.RECTANGLE,
+        Inches(sp["margin_in"]), Inches(1.2), Inches(1.5), Inches(0.04)
+    )
+    line.fill.solid()
+    line.fill.fore_color.rgb = _brand_purple()
+    line.line.fill.background()
+
+    accent_colors = [
+        _brand_purple(), _rgb(colors()["accent"]["teal"]),
+        _rgb(colors()["accent"]["blue"]), _rgb(colors()["accent"]["green"]),
+        _rgb(colors()["accent"]["orange"]), _brand_purple_dark(),
+    ]
+
+    cols = min(len(items), 3)
+    if len(items) > 6:
+        cols = 4
+    elif len(items) > 3:
+        cols = 3
+
+    card_w = (9.0 - (cols - 1) * 0.25) / cols
+    card_h = 1.4
+    start_y = 1.5
+
+    for i, item in enumerate(items[:8]):
+        col = i % cols
+        row = i // cols
+        x = sp["margin_in"] + col * (card_w + 0.25)
+        y = start_y + row * (card_h + 0.2)
+        color = accent_colors[i % len(accent_colors)]
+
+        card = slide.shapes.add_shape(
+            MSO_SHAPE.ROUNDED_RECTANGLE,
+            Inches(x), Inches(y), Inches(card_w), Inches(card_h)
+        )
+        card.fill.solid()
+        card.fill.fore_color.rgb = _rgb(colors()["neutral"]["off_white"])
+        card.line.fill.background()
+
+        accent = slide.shapes.add_shape(
+            MSO_SHAPE.RECTANGLE,
+            Inches(x), Inches(y), Inches(0.06), Inches(card_h)
+        )
+        accent.fill.solid()
+        accent.fill.fore_color.rgb = color
+        accent.line.fill.background()
+
+        label = item.get("label", item.get("title", ""))
+        txL = slide.shapes.add_textbox(
+            Inches(x + 0.2), Inches(y + 0.15),
+            Inches(card_w - 0.35), Inches(0.35)
+        )
+        _set_text(txL.text_frame, label, 12, _black(), bold=True)
+
+        desc = item.get("description", "")
+        if desc:
+            txD = slide.shapes.add_textbox(
+                Inches(x + 0.2), Inches(y + 0.5),
+                Inches(card_w - 0.35), Inches(card_h - 0.65)
+            )
+            tf = txD.text_frame
+            tf.word_wrap = True
+            _set_text(tf, desc, 9, _gray())
+
+    _add_footer(slide, prs, slide_number)
+
+
+# ============================================================
+# SLIDE TYPE: PROCESS FLOW
+# ============================================================
+
+def build_process_flow_slide(prs: Presentation, title: str,
+                             steps: list[dict], slide_number: int = 0) -> None:
+    """Horizontal process flow with connected steps.
+
+    steps: [{"label": "Step 1", "description": "..."}, ...] or ["Step 1", "Step 2", ...]
+    """
+    slide = prs.slides.add_slide(prs.slide_layouts[6])
+    sp = spacing()["ppt"]
+
+    txBox = slide.shapes.add_textbox(
+        Inches(sp["margin_in"]), Inches(sp["margin_in"]),
+        Inches(9), Inches(0.7)
+    )
+    _set_text(txBox.text_frame, title, 30, _black(), bold=True)
+
+    accent_colors = [
+        _brand_purple(), _rgb(colors()["accent"]["teal"]),
+        _rgb(colors()["accent"]["blue"]), _rgb(colors()["accent"]["green"]),
+        _rgb(colors()["accent"]["orange"]),
+    ]
+
+    normalized = []
+    for s in steps:
+        if isinstance(s, str):
+            normalized.append({"label": s, "description": ""})
+        else:
+            normalized.append(s)
+
+    num_steps = min(len(normalized), 6)
+    step_w = (8.5 - (num_steps - 1) * 0.3) / num_steps
+    arrow_w = 0.3
+    start_x = sp["margin_in"] + 0.25
+    step_h = 2.2
+    step_y = 1.8
+
+    for i, step in enumerate(normalized[:num_steps]):
+        x = start_x + i * (step_w + arrow_w)
+        color = accent_colors[i % len(accent_colors)]
+
+        # Step number circle
+        circle_size = 0.45
+        cx = x + (step_w - circle_size) / 2
+        circle = slide.shapes.add_shape(
+            MSO_SHAPE.OVAL,
+            Inches(cx), Inches(step_y), Inches(circle_size), Inches(circle_size)
+        )
+        circle.fill.solid()
+        circle.fill.fore_color.rgb = color
+        circle.line.fill.background()
+
+        txNum = slide.shapes.add_textbox(
+            Inches(cx), Inches(step_y + 0.05),
+            Inches(circle_size), Inches(circle_size - 0.1)
+        )
+        tf_num = txNum.text_frame
+        tf_num.word_wrap = False
+        _set_text(tf_num, str(i + 1), 14, _white(), bold=True, alignment=PP_ALIGN.CENTER)
+
+        # Step label
+        txL = slide.shapes.add_textbox(
+            Inches(x), Inches(step_y + 0.55),
+            Inches(step_w), Inches(0.5)
+        )
+        _set_text(txL.text_frame, step.get("label", ""), 11, _black(), bold=True,
+                  alignment=PP_ALIGN.CENTER)
+
+        # Step description
+        desc = step.get("description", "")
+        if desc:
+            txD = slide.shapes.add_textbox(
+                Inches(x), Inches(step_y + 1.0),
+                Inches(step_w), Inches(1.0)
+            )
+            tf = txD.text_frame
+            tf.word_wrap = True
+            _set_text(tf, desc, 9, _gray(), alignment=PP_ALIGN.CENTER)
+
+        # Arrow between steps
+        if i < num_steps - 1:
+            ax = x + step_w + 0.02
+            arrow = slide.shapes.add_shape(
+                MSO_SHAPE.RIGHT_ARROW,
+                Inches(ax), Inches(step_y + 0.1),
+                Inches(arrow_w - 0.04), Inches(0.25)
+            )
+            arrow.fill.solid()
+            arrow.fill.fore_color.rgb = _light_gray()
+            arrow.line.fill.background()
+
+    _add_footer(slide, prs, slide_number)
+
+
+# ============================================================
+# SLIDE TYPE: COMPARISON TABLE
+# ============================================================
+
+def build_comparison_table_slide(prs: Presentation, title: str,
+                                 headers: list[str], rows: list[list[str]],
+                                 slide_number: int = 0) -> None:
+    """Styled comparison table — for feature matrices, before/after, option comparison."""
+    slide = prs.slides.add_slide(prs.slide_layouts[6])
+    sp = spacing()["ppt"]
+
+    txBox = slide.shapes.add_textbox(
+        Inches(sp["margin_in"]), Inches(sp["margin_in"]),
+        Inches(9), Inches(0.7)
+    )
+    _set_text(txBox.text_frame, title, 30, _black(), bold=True)
+
+    num_cols = len(headers)
+    num_rows = len(rows) + 1
+    col_width = 9.0 / num_cols
+
+    table_shape = slide.shapes.add_table(
+        num_rows, num_cols,
+        Inches(sp["margin_in"]), Inches(1.5),
+        Inches(9), Inches(0.4 * num_rows)
+    )
+    table = table_shape.table
+
+    for i in range(num_cols):
+        table.columns[i].width = Inches(col_width)
+
+    for i, header in enumerate(headers):
+        cell = table.cell(0, i)
+        cell.text = header
+        cell.fill.solid()
+        cell.fill.fore_color.rgb = _brand_purple()
+        for p in cell.text_frame.paragraphs:
+            p.font.size = Pt(11)
+            p.font.color.rgb = _white()
+            p.font.bold = True
+            p.font.name = "Calibri"
+
+    for r_idx, row in enumerate(rows):
+        for c_idx, val in enumerate(row[:num_cols]):
+            cell = table.cell(r_idx + 1, c_idx)
+            cell.text = str(val)
+            if r_idx % 2 == 1:
+                cell.fill.solid()
+                cell.fill.fore_color.rgb = _rgb(colors()["neutral"]["off_white"])
+            for p in cell.text_frame.paragraphs:
+                p.font.size = Pt(10)
+                p.font.color.rgb = _charcoal()
+                p.font.name = "Calibri"
+
+    _add_footer(slide, prs, slide_number)
+
+
+# ============================================================
+# SLIDE TYPE: STATS / KPI HIGHLIGHT
+# ============================================================
+
+def build_stats_highlight_slide(prs: Presentation, title: str,
+                                stats: list[dict], slide_number: int = 0) -> None:
+    """Large numbers with labels — for KPIs, impact metrics, project stats.
+
+    stats: [{"value": "98%", "label": "Accuracy"}, ...]
+    """
+    slide = prs.slides.add_slide(prs.slide_layouts[6])
+    sp = spacing()["ppt"]
+
+    txBox = slide.shapes.add_textbox(
+        Inches(sp["margin_in"]), Inches(sp["margin_in"]),
+        Inches(9), Inches(0.7)
+    )
+    _set_text(txBox.text_frame, title, 30, _black(), bold=True)
+
+    accent_colors = [
+        _brand_purple(), _rgb(colors()["accent"]["teal"]),
+        _rgb(colors()["accent"]["blue"]), _rgb(colors()["accent"]["green"]),
+    ]
+
+    num_stats = min(len(stats), 4)
+    card_w = (9.0 - (num_stats - 1) * 0.3) / num_stats
+    card_h = 2.5
+    card_y = 1.6
+
+    for i, stat in enumerate(stats[:4]):
+        x = sp["margin_in"] + i * (card_w + 0.3)
+        color = accent_colors[i % len(accent_colors)]
+
+        card = slide.shapes.add_shape(
+            MSO_SHAPE.ROUNDED_RECTANGLE,
+            Inches(x), Inches(card_y), Inches(card_w), Inches(card_h)
+        )
+        card.fill.solid()
+        card.fill.fore_color.rgb = _rgb(colors()["neutral"]["off_white"])
+        card.line.fill.background()
+
+        top_bar = slide.shapes.add_shape(
+            MSO_SHAPE.RECTANGLE,
+            Inches(x), Inches(card_y), Inches(card_w), Inches(0.06)
+        )
+        top_bar.fill.solid()
+        top_bar.fill.fore_color.rgb = color
+        top_bar.line.fill.background()
+
+        # Big number
+        txV = slide.shapes.add_textbox(
+            Inches(x + 0.15), Inches(card_y + 0.3),
+            Inches(card_w - 0.3), Inches(1.2)
+        )
+        _set_text(txV.text_frame, str(stat.get("value", "")), 42, color, bold=True,
+                  alignment=PP_ALIGN.CENTER)
+
+        # Label
+        txL = slide.shapes.add_textbox(
+            Inches(x + 0.15), Inches(card_y + 1.4),
+            Inches(card_w - 0.3), Inches(0.4)
+        )
+        _set_text(txL.text_frame, stat.get("label", ""), 12, _charcoal(), bold=True,
+                  alignment=PP_ALIGN.CENTER)
+
+        # Sublabel
+        sublabel = stat.get("description", "")
+        if sublabel:
+            txS = slide.shapes.add_textbox(
+                Inches(x + 0.15), Inches(card_y + 1.8),
+                Inches(card_w - 0.3), Inches(0.5)
+            )
+            tf = txS.text_frame
+            tf.word_wrap = True
+            _set_text(tf, sublabel, 9, _gray(), alignment=PP_ALIGN.CENTER)
+
+    _add_footer(slide, prs, slide_number)
+
+
+# ============================================================
+# SLIDE TYPE: KEY-VALUE PAIRS
+# ============================================================
+
+def build_key_value_slide(prs: Presentation, title: str,
+                          pairs: list[dict], slide_number: int = 0) -> None:
+    """Left-right key-value layout — for project details, assumptions, config.
+
+    pairs: [{"key": "Duration", "value": "6 months"}, ...]
+    """
+    slide = prs.slides.add_slide(prs.slide_layouts[6])
+    sp = spacing()["ppt"]
+
+    txBox = slide.shapes.add_textbox(
+        Inches(sp["margin_in"]), Inches(sp["margin_in"]),
+        Inches(9), Inches(0.7)
+    )
+    _set_text(txBox.text_frame, title, 30, _black(), bold=True)
+
+    line = slide.shapes.add_shape(
+        MSO_SHAPE.RECTANGLE,
+        Inches(sp["margin_in"]), Inches(1.2), Inches(1.5), Inches(0.04)
+    )
+    line.fill.solid()
+    line.fill.fore_color.rgb = _brand_purple()
+    line.line.fill.background()
+
+    start_y = 1.6
+    row_h = 0.45
+    key_w = 3.0
+    val_w = 5.5
+
+    for i, pair in enumerate(pairs[:10]):
+        y = start_y + i * row_h
+
+        if i % 2 == 0:
+            stripe = slide.shapes.add_shape(
+                MSO_SHAPE.RECTANGLE,
+                Inches(sp["margin_in"]), Inches(y),
+                Inches(9), Inches(row_h)
+            )
+            stripe.fill.solid()
+            stripe.fill.fore_color.rgb = _rgb(colors()["neutral"]["off_white"])
+            stripe.line.fill.background()
+
+        txK = slide.shapes.add_textbox(
+            Inches(sp["margin_in"] + 0.15), Inches(y + 0.05),
+            Inches(key_w), Inches(row_h - 0.1)
+        )
+        _set_text(txK.text_frame, str(pair.get("key", "")), 12, _brand_purple(), bold=True)
+
+        txV = slide.shapes.add_textbox(
+            Inches(sp["margin_in"] + key_w + 0.5), Inches(y + 0.05),
+            Inches(val_w), Inches(row_h - 0.1)
+        )
+        _set_text(txV.text_frame, str(pair.get("value", "")), 12, _charcoal())
+
+    _add_footer(slide, prs, slide_number)
+
+
+# ============================================================
+# SLIDE TYPE: IMAGE PLACEHOLDER
+# ============================================================
+
+def build_image_placeholder_slide(prs: Presentation, title: str,
+                                  placeholder_text: str = "Architecture Diagram",
+                                  caption: str = "", slide_number: int = 0) -> None:
+    """Slide with a placeholder box where an image/diagram would go."""
+    slide = prs.slides.add_slide(prs.slide_layouts[6])
+    sp = spacing()["ppt"]
+
+    txBox = slide.shapes.add_textbox(
+        Inches(sp["margin_in"]), Inches(sp["margin_in"]),
+        Inches(9), Inches(0.7)
+    )
+    _set_text(txBox.text_frame, title, 30, _black(), bold=True)
+
+    # Placeholder box with dashed-border effect
+    box = slide.shapes.add_shape(
+        MSO_SHAPE.ROUNDED_RECTANGLE,
+        Inches(1.0), Inches(1.5), Inches(8.0), Inches(3.2)
+    )
+    box.fill.solid()
+    box.fill.fore_color.rgb = _rgb(colors()["neutral"]["off_white"])
+    box.line.color.rgb = _light_gray()
+    box.line.width = Pt(2)
+
+    # Placeholder text centered
+    txP = slide.shapes.add_textbox(
+        Inches(2.5), Inches(2.5), Inches(5.0), Inches(1.0)
+    )
+    tf = txP.text_frame
+    tf.word_wrap = True
+    _set_text(tf, f"[ {placeholder_text} ]", 16, _gray(), alignment=PP_ALIGN.CENTER)
+    _add_paragraph(tf, "Insert diagram or image here", 10, _light_gray(),
+                   alignment=PP_ALIGN.CENTER, space_before=8)
+
+    if caption:
+        txC = slide.shapes.add_textbox(
+            Inches(1.0), Inches(4.8), Inches(8.0), Inches(0.4)
+        )
+        _set_text(txC.text_frame, caption, 10, _gray(), alignment=PP_ALIGN.CENTER)
+
+    _add_footer(slide, prs, slide_number)
+
+
+# ============================================================
+# LAYOUT DISPATCHER
+# ============================================================
+
+LAYOUT_BUILDERS = {
+    "content": build_content_slide,
+    "two_column": build_two_column_slide,
+    "icon_grid": build_icon_grid_slide,
+    "process_flow": build_process_flow_slide,
+    "comparison_table": build_comparison_table_slide,
+    "stats_highlight": build_stats_highlight_slide,
+    "key_value": build_key_value_slide,
+    "image_placeholder": build_image_placeholder_slide,
+    "timeline": build_timeline_slide,
+    "team": build_team_slide,
+}
+
+
+def build_slide_by_layout(prs: Presentation, layout: str, data: dict,
+                          slide_number: int = 0) -> None:
+    """Dispatch to the correct builder based on AI-chosen layout type."""
+    builder = LAYOUT_BUILDERS.get(layout)
+
+    if builder is None:
+        build_content_slide(
+            prs, title=data.get("title", ""),
+            body_text=data.get("body", ""),
+            bullets=data.get("bullets", []),
+            slide_number=slide_number,
+        )
+        return
+
+    if layout == "content":
+        builder(prs, title=data.get("title", ""),
+                body_text=data.get("body", ""),
+                bullets=data.get("bullets", []),
+                slide_number=slide_number)
+
+    elif layout == "two_column":
+        left = data.get("left", {})
+        right = data.get("right", {})
+        builder(prs, title=data.get("title", ""),
+                left_title=left.get("title", ""),
+                left_bullets=left.get("bullets", []),
+                right_title=right.get("title", ""),
+                right_bullets=right.get("bullets", []),
+                slide_number=slide_number)
+
+    elif layout == "icon_grid":
+        builder(prs, title=data.get("title", ""),
+                items=data.get("items", []),
+                slide_number=slide_number)
+
+    elif layout == "process_flow":
+        builder(prs, title=data.get("title", ""),
+                steps=data.get("steps", []),
+                slide_number=slide_number)
+
+    elif layout == "comparison_table":
+        builder(prs, title=data.get("title", ""),
+                headers=data.get("headers", []),
+                rows=data.get("rows", []),
+                slide_number=slide_number)
+
+    elif layout == "stats_highlight":
+        builder(prs, title=data.get("title", ""),
+                stats=data.get("stats", []),
+                slide_number=slide_number)
+
+    elif layout == "key_value":
+        builder(prs, title=data.get("title", ""),
+                pairs=data.get("pairs", []),
+                slide_number=slide_number)
+
+    elif layout == "image_placeholder":
+        builder(prs, title=data.get("title", ""),
+                placeholder_text=data.get("placeholder_text", "Diagram"),
+                caption=data.get("caption", ""),
+                slide_number=slide_number)
+
+    elif layout == "timeline":
+        builder(prs, title=data.get("title", ""),
+                phases=data.get("phases", []),
+                slide_number=slide_number)
+
+    elif layout == "team":
+        builder(prs, title=data.get("title", ""),
+                team_members=data.get("members", []),
+                slide_number=slide_number)
