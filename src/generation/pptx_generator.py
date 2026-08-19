@@ -6,14 +6,13 @@ slide builder.
 """
 
 from pathlib import Path
-from pptx import Presentation
 from pptx.util import Inches
 
 import sys
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from design_system.brand import spacing
 from generation.slide_builders import (
+    create_presentation,
     build_cover_slide,
     build_toc_slide,
     build_section_divider,
@@ -34,12 +33,14 @@ SECTION_BUILDERS = {
     "executive_summary": "_build_exec_summary",
     "corporate_overview": "_build_content_section",
     "understanding_of_scope": "_build_content_section",
-    "proposed_solution": "_build_two_col_section",
+    "proposed_solution": "_build_content_section",
     "architecture": "_build_content_section",
+    "technology_stack": "_build_content_section",
     "delivery_approach": "_build_content_section",
     "timeline": "_build_timeline",
     "team_structure": "_build_team",
     "commercials": "_build_commercials",
+    "risk_mitigation": "_build_content_section",
     "case_studies": "_build_content_section",
     "next_steps": "_build_content_section",
     "closing": "_build_closing",
@@ -51,10 +52,7 @@ class ProposalPPTGenerator:
 
     def __init__(self, plan: dict):
         self.plan = plan
-        self.prs = Presentation()
-        sp = spacing()["ppt"]
-        self.prs.slide_width = Inches(sp["canvas_width_in"])
-        self.prs.slide_height = Inches(sp["canvas_height_in"])
+        self.prs = create_presentation()
         self.slide_number = 0
 
     def generate(self, output_path: str | Path) -> Path:

@@ -112,7 +112,7 @@ class ProposalDOCXGenerator:
             run.font.size = Pt(9)
             run.font.color.rgb = _brand_purple()
             run.font.bold = True
-            run.font.name = "Calibri"
+            run.font.name = "Arial"
             run2 = hp.add_run(self.plan.get("title", "Proposal"))
             run2.font.size = Pt(9)
             run2.font.color.rgb = _rgb(colors()["neutral"]["mid_gray"])
@@ -171,7 +171,7 @@ class ProposalDOCXGenerator:
         run.font.size = Pt(32)
         run.font.color.rgb = _brand_purple()
         run.font.bold = True
-        run.font.name = "Calibri"
+        run.font.name = "Arial"
 
         # Purple divider line
         p_line = self.doc.add_paragraph()
@@ -390,16 +390,19 @@ class ProposalDOCXGenerator:
                 run3.font.color.rgb = _rgb(colors()["neutral"]["mid_gray"])
 
     def _build_generic_section(self, key: str, data: dict):
-        """Fallback builder for any section type."""
+        """Fallback builder that extracts content from any layout type."""
         title = data.get("title", key.replace("_", " ").title())
         self.doc.add_heading(title, level=1)
 
+        if data.get("summary"):
+            self.doc.add_paragraph(data["summary"])
         if data.get("body"):
             self.doc.add_paragraph(data["body"])
-
         if data.get("bullets"):
             for bullet in data["bullets"]:
                 self.doc.add_paragraph(bullet, style="List Bullet")
+
+        self._render_layout_content(data)
 
         if data.get("slides"):
             for slide_data in data["slides"]:
@@ -410,6 +413,103 @@ class ProposalDOCXGenerator:
                 if slide_data.get("bullets"):
                     for bullet in slide_data["bullets"]:
                         self.doc.add_paragraph(bullet, style="List Bullet")
+                self._render_layout_content(slide_data)
+
+    def _render_layout_content(self, data: dict):
+        """Extract and render content from any slide layout type into DOCX."""
+        layout = data.get("layout", "")
+
+        if data.get("items") and not data.get("bullets"):
+            for item in data["items"]:
+                p = self.doc.add_paragraph(style="List Bullet")
+                run = p.add_run(f"{item.get('label', '')}: ")
+                run.font.bold = True
+                p.add_run(item.get("description", ""))
+
+        if data.get("steps"):
+            for i, step in enumerate(data["steps"], 1):
+                p = self.doc.add_paragraph()
+                run = p.add_run(f"{i}. {step.get('label', '')}: ")
+                run.font.bold = True
+                p.add_run(step.get("description", ""))
+
+        if data.get("stats"):
+            for stat in data["stats"]:
+                p = self.doc.add_paragraph(style="List Bullet")
+                run = p.add_run(f"{stat.get('value', '')} ")
+                run.font.bold = True
+                run.font.size = Pt(14)
+                run.font.color.rgb = _brand_purple()
+                p.add_run(f"— {stat.get('label', '')}")
+
+        if data.get("pairs"):
+            table = self.doc.add_table(rows=len(data["pairs"]), cols=2)
+            table.style = "Table Grid"
+            for i, pair in enumerate(data["pairs"]):
+                table.rows[i].cells[0].text = pair.get("key", "")
+                table.rows[i].cells[1].text = pair.get("value", "")
+                for p in table.rows[i].cells[0].paragraphs:
+                    for run in p.runs:
+                        run.font.bold = True
+
+        if layout == "two_column":
+            left = data.get("left", {})
+            right = data.get("right", {})
+            if left:
+                self.doc.add_heading(left.get("title", ""), level=3)
+                for b in left.get("bullets", []):
+                    self.doc.add_paragraph(b, style="List Bullet")
+            if right:
+                self.doc.add_heading(right.get("title", ""), level=3)
+                for b in right.get("bullets", []):
+                    self.doc.add_paragraph(b, style="List Bullet")
+
+        if data.get("layers"):
+            self.doc.add_heading("Architecture Layers", level=3)
+            for layer in data["layers"]:
+                p = self.doc.add_paragraph(style="List Bullet")
+                run = p.add_run(f"{layer.get('name', '')}: ")
+                run.font.bold = True
+                p.add_run(", ".join(layer.get("components", [])))
+
+        if data.get("technologies"):
+            table = self.doc.add_table(rows=len(data["technologies"]) + 1, cols=3)
+            table.style = "Table Grid"
+            for i, h in enumerate(["Technology", "Category", "Description"]):
+                cell = table.rows[0].cells[i]
+                cell.text = h
+                self._style_table_header_cell(cell)
+            for i, tech in enumerate(data["technologies"]):
+                table.rows[i + 1].cells[0].text = tech.get("name", "")
+                table.rows[i + 1].cells[1].text = tech.get("category", "")
+                table.rows[i + 1].cells[2].text = tech.get("description", "")
+
+        if data.get("challenges"):
+            table = self.doc.add_table(rows=len(data["challenges"]) + 1, cols=3)
+            table.style = "Table Grid"
+            for i, h in enumerate(["Challenge", "Impact", "Mitigation"]):
+                cell = table.rows[0].cells[i]
+                cell.text = h
+                self._style_table_header_cell(cell)
+            for i, ch in enumerate(data["challenges"]):
+                table.rows[i + 1].cells[0].text = ch.get("challenge", "")
+                table.rows[i + 1].cells[1].text = ch.get("impact", "")
+                table.rows[i + 1].cells[2].text = ch.get("solution", "")
+
+        if layout == "comparison_table":
+            headers = data.get("headers", [])
+            rows = data.get("rows", [])
+            if headers and rows:
+                table = self.doc.add_table(rows=len(rows) + 1, cols=len(headers))
+                table.style = "Table Grid"
+                for i, h in enumerate(headers):
+                    cell = table.rows[0].cells[i]
+                    cell.text = h
+                    self._style_table_header_cell(cell)
+                for r_idx, row in enumerate(rows):
+                    for c_idx, val in enumerate(row):
+                        if c_idx < len(headers):
+                            table.rows[r_idx + 1].cells[c_idx].text = str(val)
 
     # ============================================================
     # TABLE STYLING HELPERS
@@ -423,7 +523,7 @@ class ProposalDOCXGenerator:
                 run.font.color.rgb = _rgb("#FFFFFF")
                 run.font.bold = True
                 run.font.size = Pt(10)
-                run.font.name = "Calibri"
+                run.font.name = "Arial"
 
     def _shade_cell(self, cell, hex_color: str):
         """Apply background shading to a cell."""

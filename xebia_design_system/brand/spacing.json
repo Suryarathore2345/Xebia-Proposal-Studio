@@ -1,13 +1,16 @@
 {
   "ppt": {
     "layout": "LAYOUT_16x9",
-    "canvas_width_in": 10.0,
-    "canvas_height_in": 5.625,
+    "canvas_width_in": 13.333,
+    "canvas_height_in": 7.5,
     "margin_in": 0.5,
+    "content_margin_in": 0.7,
     "content_gap_in": 0.3,
     "section_gap_in": 0.5,
-    "footer_height_in": 0.35,
-    "header_height_in": 0.6
+    "footer_height_in": 0.4,
+    "header_height_in": 0.7,
+    "card_padding_in": 0.25,
+    "card_radius_in": 0.1
   },
   "docx": {
     "page_size": "A4",
