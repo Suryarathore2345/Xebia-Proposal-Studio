@@ -119,7 +119,7 @@ def generate_proposal_plan(user_input: str, references: list[dict] = None,
     user_message = user_input + ref_context + conv_context
 
     response = client.models.generate_content(
-        model="gemini-2.5-flash",
+        model="gemini-3.6-flash",
         contents=user_message,
         config=types.GenerateContentConfig(
             system_instruction=SYSTEM_PROMPT,
@@ -156,7 +156,7 @@ Return a JSON object with the section content. Include "title", "body" or "summa
 Return ONLY valid JSON, no markdown."""
 
     response = client.models.generate_content(
-        model="gemini-2.5-flash",
+        model="gemini-3.6-flash",
         contents=prompt,
         config=types.GenerateContentConfig(
             temperature=0.7,
