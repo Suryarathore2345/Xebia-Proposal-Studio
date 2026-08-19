@@ -88,11 +88,65 @@ def search_image(query: str, orientation: str = "landscape") -> str | None:
         return None
 
 
+TECH_KEYWORDS = {
+    "azure": "microsoft azure cloud platform",
+    "aws": "amazon web services cloud",
+    "gcp": "google cloud platform",
+    "databricks": "databricks data analytics platform",
+    "snowflake": "snowflake data warehouse cloud",
+    "kubernetes": "kubernetes container orchestration",
+    "docker": "docker container technology",
+    "terraform": "terraform infrastructure code",
+    "python": "python programming code",
+    "java": "java programming technology",
+    "react": "react frontend development",
+    "sql server": "microsoft sql server database",
+    "postgresql": "postgresql database server",
+    "mongodb": "mongodb nosql database",
+    "kafka": "apache kafka streaming data",
+    "spark": "apache spark big data processing",
+    "tableau": "tableau data visualization dashboard",
+    "power bi": "power bi analytics dashboard",
+    "fabric": "microsoft fabric data analytics",
+    "synapse": "azure synapse analytics",
+    "machine learning": "machine learning artificial intelligence",
+    "deep learning": "deep learning neural network",
+    "devops": "devops ci cd pipeline",
+    "microservices": "microservices architecture",
+    "api": "api integration technology",
+    "blockchain": "blockchain technology",
+    "iot": "internet of things sensors",
+    "cybersecurity": "cybersecurity network protection",
+    "data lake": "data lake storage architecture",
+    "etl": "etl data pipeline integration",
+    "data warehouse": "data warehouse analytics",
+    "cloud migration": "cloud migration infrastructure",
+    "agile": "agile scrum team methodology",
+    "ai": "artificial intelligence technology",
+}
+
+
+def _enhance_tech_query(query: str) -> str:
+    """Detect tech terms in the query and use specific search terms."""
+    query_lower = query.lower()
+    for tech, search_term in TECH_KEYWORDS.items():
+        if tech in query_lower:
+            return search_term
+    return query
+
+
 def fetch_slide_image(query: str, slide_type: str = "content") -> str | None:
     """Fetch an image appropriate for a slide type.
 
-    Appends context keywords to improve search relevance.
+    Detects technology/platform names and searches for their specific imagery.
+    Falls back to context-enhanced general queries.
     """
+    enhanced = _enhance_tech_query(query)
+    if enhanced != query:
+        result = search_image(enhanced, orientation="landscape")
+        if result:
+            return result
+
     context_map = {
         "cover": "business technology professional",
         "section_divider": "abstract corporate",

@@ -13,6 +13,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from generation.slide_builders import (
     create_presentation,
+    get_active_theme,
     build_cover_slide,
     build_toc_slide,
     build_section_divider,
@@ -24,6 +25,8 @@ from generation.slide_builders import (
     build_commercials_slide,
     build_closing_slide,
     build_slide_by_layout,
+    build_global_presence_slide,
+    build_xebia_capabilities_slide,
 )
 from images.pexels_client import fetch_slide_image
 
@@ -53,7 +56,13 @@ class ProposalPPTGenerator:
 
     def __init__(self, plan: dict):
         self.plan = plan
-        self.prs = create_presentation()
+        proposal_context = {
+            "industry": plan.get("industry", ""),
+            "customer": plan.get("customer", ""),
+            "title": plan.get("title", ""),
+        }
+        self.prs = create_presentation(proposal_context)
+        self.theme = get_active_theme()
         self.slide_number = 0
         self._image_cache: dict[str, str | None] = {}
 
@@ -75,11 +84,18 @@ class ProposalPPTGenerator:
         storyline = self.plan.get("storyline", [])
         sections = self.plan.get("sections", {})
 
+        xebia_slides_added = False
+
         for section_key in storyline:
             section_data = sections.get(section_key, {})
             builder_name = SECTION_BUILDERS.get(section_key, "_build_content_section")
             builder = getattr(self, builder_name)
             builder(section_key, section_data)
+
+            if section_key == "corporate_overview" and not xebia_slides_added:
+                build_xebia_capabilities_slide(self.prs, self._next_slide_num())
+                build_global_presence_slide(self.prs, self._next_slide_num())
+                xebia_slides_added = True
 
         self.prs.save(str(output_path))
         return output_path

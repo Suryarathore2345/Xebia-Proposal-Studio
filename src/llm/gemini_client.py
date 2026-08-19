@@ -52,6 +52,7 @@ Return ONLY a JSON object (no markdown, no code fences) with this structure:
   "ready": true,
   "title": "Proposal title",
   "customer": "Customer name",
+  "industry": "Customer's industry (e.g. retail, finance, healthcare, technology, manufacturing, energy, telecom)",
   "objective": "One-line objective",
   "storyline": ["cover", "table_of_contents", "executive_summary", "corporate_overview", "understanding_of_scope", "proposed_solution", "architecture", "technology_stack", "delivery_approach", "timeline", "team_structure", "commercials", "risk_mitigation", "case_studies", "next_steps", "closing"],
   "sections": { ... see below ... }

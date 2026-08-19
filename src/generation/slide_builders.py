@@ -1,8 +1,8 @@
-"""Xebia Proposal Slide Builders — Template-Based Design.
+"""Xebia Proposal Slide Builders — Dynamic Template-Based Design.
 
-Uses the official Xebia PPTX template extracted from reference presentations.
-The template contains 30 pre-designed layouts with proper branding, backgrounds,
-decorative elements, and placeholder positioning.
+Uses multiple Xebia PPTX templates with dynamic theme variations.
+Each proposal gets a unique visual identity through template rotation,
+color palette variation, and decorative element randomization.
 
 Canvas: 13.33in x 7.50in (widescreen 16:9)
 Primary: #6C1D5F (deep purple)
@@ -21,8 +21,14 @@ from pptx.enum.text import PP_ALIGN, MSO_ANCHOR
 from pptx.dml.color import RGBColor
 
 from design_system.brand import colors, typography, spacing, theme
+from generation.template_engine import (
+    ThemeConfig, generate_theme, create_themed_presentation,
+    add_decorative_element,
+)
 
 TEMPLATE_PATH = Path(__file__).resolve().parent.parent.parent / "templates" / "xebia_retail.pptx"
+
+_active_theme: ThemeConfig | None = None
 
 # ============================================================
 # HELPERS
@@ -63,21 +69,27 @@ def _c(key: str) -> RGBColor:
 ACCENT_COLORS = ["purple", "teal", "blue", "green", "orange", "light_blue"]
 
 
-def create_presentation() -> Presentation:
-    """Create a Presentation from the Xebia template."""
-    if TEMPLATE_PATH.exists():
-        return Presentation(str(TEMPLATE_PATH))
-    return Presentation()
+def create_presentation(proposal_context: dict = None) -> Presentation:
+    """Create a Presentation with a dynamically generated theme."""
+    global _active_theme
+    _active_theme = generate_theme(proposal_context)
+    return create_themed_presentation(_active_theme)
+
+
+def get_active_theme() -> ThemeConfig | None:
+    return _active_theme
 
 
 def _get_layout(prs: Presentation, name: str):
-    """Find a slide layout by name, fallback to first blank-ish layout."""
+    """Find a slide layout by name, with smart fallbacks across templates."""
     for layout in prs.slide_layouts:
         if layout.name == name:
             return layout
-    for layout in prs.slide_layouts:
-        if "Content_Basic" in layout.name:
-            return layout
+    fallback_names = ["Content_Basic", "Title Content/White", "Content Title", "Blank"]
+    for fb in fallback_names:
+        for layout in prs.slide_layouts:
+            if fb in layout.name:
+                return layout
     return prs.slide_layouts[0]
 
 
@@ -993,6 +1005,144 @@ def build_challenges_slide(prs: Presentation, title: str,
             card.line.width = Pt(0.5)
             _add_shape(slide, MSO_SHAPE.RECTANGLE, cx, y, 0.06, 0.7, fill_color=color)
             _add_textbox(slide, cx + 0.2, y + 0.08, col_w - 0.35, 0.55, ch.get(key, ""), 10, _c("charcoal"))
+
+
+# ============================================================
+# XEBIA GLOBAL PRESENCE — Premium world map slide
+# ============================================================
+
+def build_global_presence_slide(prs: Presentation, slide_number: int = 0) -> None:
+    slide = _add_slide(prs, "Content_Basic")
+
+    _fill_placeholder(slide, 0, "Global Presence", size=24, color=_c("black"), bold=True)
+    body_ph = _get_ph(slide, 1)
+    if body_ph:
+        body_ph.text_frame.paragraphs[0].text = ""
+
+    theme = get_active_theme()
+    accent = theme.accent_palette[0] if theme else "#6C1D5F"
+    add_decorative_element(slide, "world_map", accent)
+
+    _add_textbox(slide, 0.8, 1.7, 11.5, 0.5,
+                 "5,000+ experts across 16 countries delivering digital transformation",
+                 13, _c("dark_gray"), alignment=PP_ALIGN.CENTER)
+
+    stats = [
+        ("5,000+", "Experts"),
+        ("16", "Countries"),
+        ("25+", "Years"),
+        ("1,000+", "Clients"),
+    ]
+    card_w = 2.2
+    start_x = 1.5
+    gap = 0.6
+    y = 5.5
+    for i, (value, label) in enumerate(stats):
+        x = start_x + i * (card_w + gap)
+        color = _rgb(theme.accent_palette[i % len(theme.accent_palette)] if theme else "#6C1D5F")
+
+        card = _add_shape(slide, MSO_SHAPE.ROUNDED_RECTANGLE, x, y, card_w, 1.3, fill_color=_c("white"))
+        card.line.color.rgb = _c("light_gray")
+        card.line.width = Pt(0.75)
+        _add_shape(slide, MSO_SHAPE.RECTANGLE, x, y, card_w, 0.06, fill_color=color)
+
+        _add_textbox(slide, x + 0.1, y + 0.15, card_w - 0.2, 0.6, value, 28, color, bold=True, alignment=PP_ALIGN.CENTER)
+        _add_textbox(slide, x + 0.1, y + 0.75, card_w - 0.2, 0.4, label, 12, _c("dark_gray"), alignment=PP_ALIGN.CENTER)
+
+
+# ============================================================
+# XEBIA CAPABILITIES — About Xebia premium showcase
+# ============================================================
+
+def build_xebia_capabilities_slide(prs: Presentation, slide_number: int = 0) -> None:
+    slide = _add_slide(prs, "Content_Basic")
+
+    _fill_placeholder(slide, 0, "Why Xebia", size=24, color=_c("black"), bold=True)
+    body_ph = _get_ph(slide, 1)
+    if body_ph:
+        body_ph.text_frame.paragraphs[0].text = ""
+
+    theme = get_active_theme()
+
+    capabilities = [
+        ("Data & AI", "End-to-end data engineering, ML/AI, and analytics solutions"),
+        ("Cloud", "Multi-cloud architecture, migration, and managed services"),
+        ("Software Engineering", "Full-stack development, microservices, DevOps"),
+        ("Agile & Quality", "Agile coaching, testing strategy, quality engineering"),
+        ("Low Code", "Rapid application development with enterprise platforms"),
+        ("Academy", "Certified training programs for upskilling teams"),
+    ]
+
+    cols = 3
+    card_w = (11.8 - (cols - 1) * 0.3) / cols
+    card_h = 2.0
+
+    for i, (cap_name, cap_desc) in enumerate(capabilities):
+        col = i % cols
+        row = i // cols
+        x = 0.6 + col * (card_w + 0.3)
+        y = 2.2 + row * (card_h + 0.3)
+        color = _rgb(theme.accent_palette[i % len(theme.accent_palette)] if theme else "#6C1D5F")
+
+        card = _add_shape(slide, MSO_SHAPE.ROUNDED_RECTANGLE, x, y, card_w, card_h, fill_color=_c("white"))
+        card.line.color.rgb = _c("light_gray")
+        card.line.width = Pt(0.75)
+        _add_shape(slide, MSO_SHAPE.RECTANGLE, x, y, card_w, 0.07, fill_color=color)
+
+        icon_size = 0.45
+        _add_shape(slide, MSO_SHAPE.OVAL, x + 0.2, y + 0.25, icon_size, icon_size, fill_color=color)
+        initials = cap_name[0]
+        _add_textbox(slide, x + 0.2, y + 0.3, icon_size, icon_size - 0.1, initials, 16, _c("white"), bold=True, alignment=PP_ALIGN.CENTER)
+
+        _add_textbox(slide, x + 0.8, y + 0.25, card_w - 1.0, 0.4, cap_name, 13, _c("black"), bold=True)
+        _add_textbox(slide, x + 0.2, y + 0.85, card_w - 0.4, 1.0, cap_desc, 10, _c("dark_gray"))
+
+    if theme:
+        add_decorative_element(slide, theme.decorative_style, theme.accent_palette[0], "bottom")
+
+
+# ============================================================
+# DECORATED CONTENT SLIDE — Content with theme decorations
+# ============================================================
+
+def build_decorated_content_slide(prs: Presentation, title: str,
+                                   body_text: str = "", bullets: list[str] = None,
+                                   slide_number: int = 0) -> None:
+    """Content slide with dynamic decorative elements from the theme."""
+    slide = _add_slide(prs, "Content_Basic")
+
+    _fill_placeholder(slide, 0, title, size=24, color=_c("black"), bold=True)
+
+    body_ph = _get_ph(slide, 1)
+    if body_ph:
+        tf = body_ph.text_frame
+        tf.word_wrap = True
+
+        first_para = True
+        if body_text:
+            p = tf.paragraphs[0]
+            p.text = body_text
+            p.font.size = Pt(12)
+            p.font.color.rgb = _c("charcoal")
+            p.font.name = "Arial"
+            first_para = False
+
+        if bullets:
+            for bullet in bullets:
+                if first_para:
+                    p = tf.paragraphs[0]
+                    first_para = False
+                else:
+                    p = tf.add_paragraph()
+                p.text = f"•  {bullet}"
+                p.font.size = Pt(11)
+                p.font.color.rgb = _c("charcoal")
+                p.font.name = "Arial"
+                p.space_before = Pt(4)
+
+    theme = get_active_theme()
+    if theme:
+        add_decorative_element(slide, theme.decorative_style, theme.next_accent(), "bottom")
 
 
 # ============================================================
