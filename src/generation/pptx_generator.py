@@ -25,6 +25,7 @@ from generation.slide_builders import (
     build_closing_slide,
     build_slide_by_layout,
 )
+from images.pexels_client import fetch_slide_image
 
 
 SECTION_BUILDERS = {
@@ -54,6 +55,17 @@ class ProposalPPTGenerator:
         self.plan = plan
         self.prs = create_presentation()
         self.slide_number = 0
+        self._image_cache: dict[str, str | None] = {}
+
+    def _fetch_image(self, data: dict, slide_type: str = "content") -> str | None:
+        query = data.get("image_query")
+        if not query:
+            return None
+        if query in self._image_cache:
+            return self._image_cache[query]
+        path = fetch_slide_image(query, slide_type)
+        self._image_cache[query] = path
+        return path
 
     def generate(self, output_path: str | Path) -> Path:
         """Generate the full deck and save to output_path."""
@@ -83,6 +95,7 @@ class ProposalPPTGenerator:
             subtitle=data.get("subtitle", self.plan.get("objective", "")),
             customer=data.get("customer", self.plan.get("customer", "")),
             date=data.get("date", ""),
+            image_path=self._fetch_image(data, "cover"),
         )
         self._next_slide_num()
 
@@ -101,7 +114,8 @@ class ProposalPPTGenerator:
 
     def _build_exec_summary(self, key: str, data: dict):
         build_section_divider(self.prs, data.get("title", "Executive Summary"),
-                              self._next_slide_num())
+                              self._next_slide_num(),
+                              image_path=self._fetch_image(data, "section_divider"))
         build_executive_summary_slide(
             self.prs,
             title=data.get("title", "Executive Summary"),
@@ -112,7 +126,8 @@ class ProposalPPTGenerator:
 
     def _build_content_section(self, key: str, data: dict):
         title = data.get("title", key.replace("_", " ").title())
-        build_section_divider(self.prs, title, self._next_slide_num())
+        build_section_divider(self.prs, title, self._next_slide_num(),
+                              image_path=self._fetch_image(data, "section_divider"))
 
         slides = data.get("slides", [])
         if slides:
@@ -149,7 +164,8 @@ class ProposalPPTGenerator:
 
     def _build_two_col_section(self, key: str, data: dict):
         title = data.get("title", key.replace("_", " ").title())
-        build_section_divider(self.prs, title, self._next_slide_num())
+        build_section_divider(self.prs, title, self._next_slide_num(),
+                              image_path=self._fetch_image(data, "section_divider"))
 
         layout = data.get("layout")
         if layout:
@@ -177,7 +193,8 @@ class ProposalPPTGenerator:
 
     def _build_timeline(self, key: str, data: dict):
         title = data.get("title", "Timeline")
-        build_section_divider(self.prs, title, self._next_slide_num())
+        build_section_divider(self.prs, title, self._next_slide_num(),
+                              image_path=self._fetch_image(data, "timeline"))
         build_timeline_slide(
             self.prs,
             title=title,
@@ -187,7 +204,8 @@ class ProposalPPTGenerator:
 
     def _build_team(self, key: str, data: dict):
         title = data.get("title", "Team Structure")
-        build_section_divider(self.prs, title, self._next_slide_num())
+        build_section_divider(self.prs, title, self._next_slide_num(),
+                              image_path=self._fetch_image(data, "team"))
         build_team_slide(
             self.prs,
             title=title,
@@ -197,7 +215,8 @@ class ProposalPPTGenerator:
 
     def _build_commercials(self, key: str, data: dict):
         title = data.get("title", "Commercials")
-        build_section_divider(self.prs, title, self._next_slide_num())
+        build_section_divider(self.prs, title, self._next_slide_num(),
+                              image_path=self._fetch_image(data, "content"))
         build_commercials_slide(
             self.prs,
             title=title,
@@ -215,6 +234,7 @@ class ProposalPPTGenerator:
             contact_email=data.get("contact_email", ""),
             contact_phone=data.get("contact_phone", ""),
             slide_number=self._next_slide_num(),
+            image_path=self._fetch_image(data, "closing"),
         )
 
 

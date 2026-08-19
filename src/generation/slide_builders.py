@@ -150,6 +150,24 @@ def _get_ph(slide, idx: int):
         return None
 
 
+def _get_picture_placeholders(slide):
+    """Find PICTURE placeholder indices on a slide."""
+    from pptx.oxml.ns import qn
+    pic_indices = []
+    spTree = slide.shapes._spTree
+    for sp in spTree.iterchildren(qn('p:sp')):
+        nvSpPr = sp.find(qn('p:nvSpPr'))
+        if nvSpPr is not None:
+            nvPr = nvSpPr.find(qn('p:nvPr'))
+            if nvPr is not None:
+                ph = nvPr.find(qn('p:ph'))
+                if ph is not None and ph.get('type') == 'pic':
+                    idx = ph.get('idx')
+                    if idx is not None:
+                        pic_indices.append(int(idx))
+    return pic_indices
+
+
 def _remove_picture_placeholders(slide):
     """Remove PICTURE placeholders so empty 'add a photo' boxes don't appear."""
     from pptx.oxml.ns import qn
@@ -167,11 +185,49 @@ def _remove_picture_placeholders(slide):
         spTree.remove(sp)
 
 
-def _add_slide(prs: Presentation, layout_name: str):
-    """Add a slide from a named layout, removing empty picture placeholders."""
+def _insert_image_into_placeholder(slide, image_path: str) -> bool:
+    """Insert an image into the first PICTURE placeholder on the slide."""
+    pic_indices = _get_picture_placeholders(slide)
+    if not pic_indices or not image_path:
+        return False
+    try:
+        ph = slide.placeholders[pic_indices[0]]
+        ph.insert_picture(image_path)
+        for idx in pic_indices[1:]:
+            _remove_single_picture_placeholder(slide, idx)
+        return True
+    except Exception:
+        _remove_picture_placeholders(slide)
+        return False
+
+
+def _remove_single_picture_placeholder(slide, idx: int):
+    """Remove a specific PICTURE placeholder by index."""
+    from pptx.oxml.ns import qn
+    spTree = slide.shapes._spTree
+    for sp in list(spTree.iterchildren(qn('p:sp'))):
+        nvSpPr = sp.find(qn('p:nvSpPr'))
+        if nvSpPr is not None:
+            nvPr = nvSpPr.find(qn('p:nvPr'))
+            if nvPr is not None:
+                ph = nvPr.find(qn('p:ph'))
+                if ph is not None and ph.get('type') == 'pic':
+                    ph_idx = ph.get('idx')
+                    if ph_idx is not None and int(ph_idx) == idx:
+                        spTree.remove(sp)
+                        return
+
+
+def _add_slide(prs: Presentation, layout_name: str, image_path: str = None):
+    """Add a slide from a named layout. If image_path is provided, insert it
+    into the first PICTURE placeholder; otherwise remove all picture placeholders."""
     layout = _get_layout(prs, layout_name)
     slide = prs.slides.add_slide(layout)
-    _remove_picture_placeholders(slide)
+    if image_path:
+        if not _insert_image_into_placeholder(slide, image_path):
+            _remove_picture_placeholders(slide)
+    else:
+        _remove_picture_placeholders(slide)
     return slide
 
 
@@ -232,8 +288,9 @@ def _fill_placeholder_multi(slide, idx: int, lines: list[str],
 # ============================================================
 
 def build_cover_slide(prs: Presentation, title: str, subtitle: str = "",
-                      customer: str = "", date: str = "") -> None:
-    slide = _add_slide(prs, "Main-cover_dark")
+                      customer: str = "", date: str = "",
+                      image_path: str = None) -> None:
+    slide = _add_slide(prs, "Main-cover_dark", image_path=image_path)
 
     _fill_placeholder(slide, 0, title, size=28, color=_c("white"), bold=True)
 
@@ -271,8 +328,9 @@ def build_toc_slide(prs: Presentation, items: list[str], slide_number: int = 0) 
 # SECTION DIVIDER — Chapter_dark
 # ============================================================
 
-def build_section_divider(prs: Presentation, title: str, slide_number: int = 0) -> None:
-    slide = _add_slide(prs, "Chapter_dark")
+def build_section_divider(prs: Presentation, title: str, slide_number: int = 0,
+                          image_path: str = None) -> None:
+    slide = _add_slide(prs, "Chapter_dark", image_path=image_path)
 
     _fill_placeholder(slide, 0, title, size=28, color=_c("white"), bold=True)
 
@@ -756,8 +814,9 @@ def build_commercials_slide(prs: Presentation, title: str,
 
 def build_closing_slide(prs: Presentation, title: str = "Thank You",
                         contact_name: str = "", contact_email: str = "",
-                        contact_phone: str = "", slide_number: int = 0) -> None:
-    slide = _add_slide(prs, "End-cover_dark")
+                        contact_phone: str = "", slide_number: int = 0,
+                        image_path: str = None) -> None:
+    slide = _add_slide(prs, "End-cover_dark", image_path=image_path)
 
     _fill_placeholder(slide, 0, title, size=36, color=_c("white"), bold=True)
 

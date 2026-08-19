@@ -199,6 +199,11 @@ AVAILABLE SLIDE LAYOUTS (choose the best one for each piece of content):
 - "timeline": phase bars (timeline sections only). Needs "phases".
 - "team": member cards (team sections only). Needs "members".
 
+IMAGE QUERIES:
+Every slide object should include an "image_query" field — a 2-4 word search phrase for finding a relevant stock photo.
+Examples: "cloud infrastructure", "data analytics dashboard", "agile team collaboration", "cybersecurity network".
+Make queries specific to the slide's topic. The image_query is used to fetch a Pexels stock photo for visual enhancement.
+
 CONTENT QUALITY RULES:
 1. EVERY section must have meaningful, specific content. No empty sections, no placeholder text like "TBD" or "To be discussed".
 2. Use at least 6-7 DIFFERENT layout types across the proposal. Never use "content" for more than 2 slides.
@@ -210,6 +215,7 @@ CONTENT QUALITY RULES:
 8. Bullets should be concise (under 15 words each) but specific. No generic consulting jargon.
 9. Each section's "slides" array can have multiple slides — use this to avoid overloading any single slide with too much content.
 10. For commercials, use rates in the $150-250/hr range unless specified. Calculate hours realistically based on timeline and team size.
+11. EVERY slide must have an "image_query" field for stock photo fetching.
 
 IMPORTANT:
 - Use reference material to inform content when available.

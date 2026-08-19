@@ -50,6 +50,9 @@ references/approved/**/*.docx
 references/approved/**/*.pdf
 references/restricted/
 
+# Image cache (downloaded stock photos)
+data/image_cache/
+
 # Temporary
 *.tmp
 *.bak
