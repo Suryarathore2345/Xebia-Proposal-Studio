@@ -218,13 +218,16 @@ CONTENT QUALITY RULES:
 10. For commercials, use rates in the $150-250/hr range unless specified. Calculate hours realistically based on timeline and team size.
 11. EVERY slide must have an "image_query" field for stock photo fetching.
 
-IMPORTANT:
-- Use reference material to inform content when available.
+CRITICAL RULES:
+- ALWAYS use the customer name and project details provided by the USER. NEVER copy or reuse organization names, project names, client names, contact details, or specific business context from reference material.
+- Reference material is provided ONLY as examples of proposal STRUCTURE and STYLE. Extract patterns like section organization, writing tone, and level of detail — but REPLACE all specifics with the user's actual customer information.
+- If the user says the customer is "Meghnani Groups", every section must use "Meghnani Groups" — never substitute a name from a reference document.
 - Always return valid JSON. No markdown formatting around it."""
 
 
 def generate_proposal_plan(user_input: str, references: list[dict] = None,
-                           conversation_history: list[dict] = None) -> dict:
+                           conversation_history: list[dict] = None,
+                           images: list[dict] = None) -> dict:
     """Generate a structured proposal plan from user input and reference context."""
     client = _get_client()
 
@@ -232,11 +235,12 @@ def generate_proposal_plan(user_input: str, references: list[dict] = None,
     if references:
         ref_snippets = []
         for r in references[:8]:
-            ref_snippets.append(
-                f"- [{r.get('source_file', '')}] (score: {r.get('score', 0):.2f}): "
-                f"{r.get('text', '')[:200]}"
-            )
-        ref_context = "\n\nRelevant reference material from past Xebia proposals:\n" + "\n".join(ref_snippets)
+            ref_snippets.append(f"- {r.get('text', '')[:200]}")
+        ref_context = (
+            "\n\n[STYLE REFERENCE ONLY — do NOT copy names, clients, or specifics from these. "
+            "Use them only to understand Xebia's writing style and proposal structure.]\n"
+            + "\n".join(ref_snippets)
+        )
 
     conv_context = ""
     if conversation_history:
@@ -248,9 +252,21 @@ def generate_proposal_plan(user_input: str, references: list[dict] = None,
 
     user_message = user_input + ref_context + conv_context
 
+    contents = []
+    if images:
+        for img in images:
+            img_path = Path(img.get("path", ""))
+            if img_path.exists():
+                mime = img.get("mime_type", "image/png")
+                contents.append(types.Part.from_bytes(data=img_path.read_bytes(), mime_type=mime))
+        if contents:
+            user_message += "\n\n[Reference images are attached. Analyze them to understand the architecture, technology stack, and design patterns shown. Incorporate relevant details into the proposal.]"
+
+    contents.append(user_message)
+
     response = client.models.generate_content(
         model="gemini-3.6-flash",
-        contents=user_message,
+        contents=contents,
         config=types.GenerateContentConfig(
             system_instruction=SYSTEM_PROMPT,
             temperature=0.7,
