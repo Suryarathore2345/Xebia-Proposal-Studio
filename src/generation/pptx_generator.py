@@ -1,24 +1,33 @@
-"""Xebia Proposal PPT Generator.
+"""Xebia Proposal PPT Generator — Blueprint-driven dynamic design.
 
-Takes a structured proposal plan (dict/YAML) and generates a complete
-Xebia-branded PPTX deck by dispatching each section to the appropriate
-slide builder.
+Orchestrates the full pipeline:
+  1. Generate a DesignTheme per proposal via Gemini (purple spectrum)
+  2. Select blueprints for each slide via Gemini (30+ visual combinations)
+  3. Render blueprint backgrounds/accents, then fill content via builders
+  4. Enforce variety constraints (no repetition, balanced dark/light)
+  5. Integrate Pexels stock images where available
 """
 
-from pathlib import Path
-from pptx.util import Inches
-
 import sys
+from pathlib import Path
+
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
+from generation.design_generator import DesignPalette, SlideStyle
+from generation.design_engine.theme_generator import DesignTheme, generate_theme
+from generation.design_engine.slide_designer import design_slides, SlideDesignSpec
+from generation.design_engine.blueprints import get_blueprint
+from generation.design_engine.palette import PURPLE, NEUTRALS
+from generation.template_engine import pick_template, get_available_templates
 
 from generation.slide_builders import (
     create_presentation,
-    get_active_theme,
     build_cover_slide,
     build_toc_slide,
     build_section_divider,
     build_executive_summary_slide,
     build_content_slide,
+    build_content_photo_slide,
     build_two_column_slide,
     build_timeline_slide,
     build_team_slide,
@@ -31,40 +40,110 @@ from generation.slide_builders import (
 from images.pexels_client import fetch_slide_image
 
 
-SECTION_BUILDERS = {
-    "cover": "_build_cover",
-    "table_of_contents": "_build_toc",
-    "executive_summary": "_build_exec_summary",
-    "corporate_overview": "_build_content_section",
-    "understanding_of_scope": "_build_content_section",
-    "proposed_solution": "_build_content_section",
-    "architecture": "_build_content_section",
-    "technology_stack": "_build_content_section",
-    "delivery_approach": "_build_content_section",
-    "timeline": "_build_timeline",
-    "team_structure": "_build_team",
-    "commercials": "_build_commercials",
-    "risk_mitigation": "_build_content_section",
-    "case_studies": "_build_content_section",
-    "next_steps": "_build_content_section",
-    "closing": "_build_closing",
-}
+PHOTO_ELIGIBLE_LAYOUTS = {"content", "two_column", "key_value"}
+
+
+def _theme_to_palette(theme: DesignTheme) -> DesignPalette:
+    """Bridge: convert DesignTheme to legacy DesignPalette for builders."""
+    cycle = theme.accent_cycle or [theme.primary_accent, theme.secondary_accent]
+    return DesignPalette(
+        primary=theme.primary_accent,
+        secondary=theme.secondary_accent,
+        accent1=cycle[0] if len(cycle) > 0 else theme.primary_accent,
+        accent2=cycle[1] if len(cycle) > 1 else theme.secondary_accent,
+        accent3=cycle[2] if len(cycle) > 2 else theme.primary_accent,
+        bg_light="#FFFFFF",
+        bg_dark=NEUTRALS.BLACK,
+        bg_warm=NEUTRALS.OFF_WHITE,
+        bg_card=theme.card_fill,
+        text_dark=theme.text_heading_light,
+        text_medium=theme.text_body_light,
+        text_light="#FFFFFF",
+    )
+
+
+def _make_style(theme: DesignTheme, palette: DesignPalette,
+                spec: SlideDesignSpec) -> SlideStyle:
+    """Create a SlideStyle from a DesignTheme and per-slide spec."""
+    bp = get_blueprint(spec.blueprint_id)
+    is_dark = bp.is_dark
+
+    return SlideStyle(
+        heading_font=theme.heading_font,
+        body_font=theme.body_font,
+        composition="none",
+        accent_color=spec.accent_override or theme.primary_accent,
+        card_style=theme.card_style,
+        title_color="#FFFFFF" if is_dark else theme.text_heading_light,
+        body_color="#D4D4D8" if is_dark else theme.text_body_light,
+        card_bg="#2A2A3A" if is_dark else theme.card_fill,
+        border_color="#3F3F50" if is_dark else theme.card_border,
+        palette=palette,
+        blueprint_id=spec.blueprint_id,
+        design_theme=theme,
+    )
 
 
 class ProposalPPTGenerator:
-    """Generates a complete Xebia-branded PPTX from a proposal plan."""
+    """Generates a complete Xebia-branded PPTX with blueprint-driven design."""
 
-    def __init__(self, plan: dict):
+    def __init__(self, plan: dict, template_name: str | None = None):
         self.plan = plan
-        proposal_context = {
-            "industry": plan.get("industry", ""),
-            "customer": plan.get("customer", ""),
-            "title": plan.get("title", ""),
-        }
-        self.prs = create_presentation(proposal_context)
-        self.theme = get_active_theme()
-        self.slide_number = 0
+
+        tpl = pick_template(template_name)
+        self.template_info = tpl
+        print(f"[PPTGenerator] Template: {tpl['name']} ({tpl['family']})")
+
+        print("[PPTGenerator] Generating design theme...")
+        self.theme = generate_theme(plan)
+        print(f"[PPTGenerator] Theme: {self.theme.theme_name}")
+        print(f"[PPTGenerator] Fonts: {self.theme.heading_font}/{self.theme.body_font}, "
+              f"card_style={self.theme.card_style}")
+        if self.theme.rationale:
+            print(f"[PPTGenerator] Rationale: {self.theme.rationale}")
+
+        print("[PPTGenerator] Selecting slide blueprints...")
+        self.specs = design_slides(plan, self.theme)
+        bp_ids = [s.blueprint_id for s in self.specs]
+        unique = len(set(bp_ids))
+        print(f"[PPTGenerator] {len(self.specs)} slides, {unique} unique blueprints")
+
+        self.palette = _theme_to_palette(self.theme)
+
+        from generation.design_generator import ProposalDesignSystem
+        self._ds = ProposalDesignSystem(
+            palette=self.palette,
+            heading_font=self.theme.heading_font,
+            body_font=self.theme.body_font,
+            card_style=self.theme.card_style,
+        )
+        self.prs = create_presentation(self._ds, template_path=tpl["path"])
+
+        self._spec_map = {s.slide_id: s for s in self.specs}
+        self._spec_index = 0
         self._image_cache: dict[str, str | None] = {}
+        self._photo_side_counter = 0
+        self._divider_counter = 0
+
+    def _next_spec(self) -> SlideDesignSpec:
+        if self._spec_index < len(self.specs):
+            spec = self.specs[self._spec_index]
+            self._spec_index += 1
+            return spec
+        fallback = SlideDesignSpec(
+            slide_id=f"extra_{self._spec_index}",
+            slide_type="content",
+            blueprint_id="white_full_accent_line",
+            accent_override=self.theme.primary_accent,
+        )
+        self._spec_index += 1
+        return fallback
+
+    def _style_for_spec(self, spec: SlideDesignSpec) -> SlideStyle:
+        return _make_style(self.theme, self.palette, spec)
+
+    def _next_slide_num(self) -> int:
+        return self._spec_index
 
     def _fetch_image(self, data: dict, slide_type: str = "content") -> str | None:
         query = data.get("image_query")
@@ -76,64 +155,94 @@ class ProposalPPTGenerator:
         self._image_cache[query] = path
         return path
 
+    def _next_photo_side(self) -> bool:
+        self._photo_side_counter += 1
+        return self._photo_side_counter % 2 == 0
+
+    def _next_divider_light(self) -> bool:
+        self._divider_counter += 1
+        return self._divider_counter % 3 == 0
+
     def generate(self, output_path: str | Path) -> Path:
-        """Generate the full deck and save to output_path."""
         output_path = Path(output_path)
         output_path.parent.mkdir(parents=True, exist_ok=True)
 
         storyline = self.plan.get("storyline", [])
         sections = self.plan.get("sections", {})
-
         xebia_slides_added = False
 
         for section_key in storyline:
             section_data = sections.get(section_key, {})
-            builder_name = SECTION_BUILDERS.get(section_key, "_build_content_section")
-            builder = getattr(self, builder_name)
-            builder(section_key, section_data)
+
+            if section_key == "cover":
+                self._build_cover(section_data)
+            elif section_key == "table_of_contents":
+                self._build_toc(section_data)
+            elif section_key == "closing":
+                self._build_closing(section_data)
+            elif section_key == "executive_summary":
+                self._build_exec_summary(section_data)
+            elif section_key == "timeline":
+                self._build_timeline(section_data)
+            elif section_key == "team_structure":
+                self._build_team(section_data)
+            elif section_key == "commercials":
+                self._build_commercials(section_data)
+            else:
+                self._build_content_section(section_key, section_data)
 
             if section_key == "corporate_overview" and not xebia_slides_added:
-                build_xebia_capabilities_slide(self.prs, self._next_slide_num())
-                build_global_presence_slide(self.prs, self._next_slide_num())
+                spec = self._next_spec()
+                style = self._style_for_spec(spec)
+                build_xebia_capabilities_slide(self.prs, style, self._next_slide_num())
+                spec = self._next_spec()
+                style = self._style_for_spec(spec)
+                build_global_presence_slide(self.prs, style, self._next_slide_num())
                 xebia_slides_added = True
 
         self.prs.save(str(output_path))
+        print(f"[PPTGenerator] Saved: {output_path} ({self._spec_index} slides)")
         return output_path
 
-    def _next_slide_num(self) -> int:
-        self.slide_number += 1
-        return self.slide_number
+    # ── Section builders ──────────────────────────────────────
 
-    def _build_cover(self, key: str, data: dict):
+    def _build_cover(self, data: dict):
+        spec = self._next_spec()
+        style = self._style_for_spec(spec)
         build_cover_slide(
-            self.prs,
+            self.prs, style,
             title=data.get("title", self.plan.get("title", "Xebia Proposal")),
             subtitle=data.get("subtitle", self.plan.get("objective", "")),
             customer=data.get("customer", self.plan.get("customer", "")),
             date=data.get("date", ""),
             image_path=self._fetch_image(data, "cover"),
         )
-        self._next_slide_num()
 
-    def _build_toc(self, key: str, data: dict):
+    def _build_toc(self, data: dict):
+        spec = self._next_spec()
+        style = self._style_for_spec(spec)
         storyline = self.plan.get("storyline", [])
         display_names = []
         for s in storyline:
             if s in ("cover", "table_of_contents", "closing"):
                 continue
-            name = s.replace("_", " ").title()
             section_data = self.plan.get("sections", {}).get(s, {})
-            name = section_data.get("title", name)
+            name = section_data.get("title", s.replace("_", " ").title())
             display_names.append(name)
+        build_toc_slide(self.prs, style, display_names, self._next_slide_num())
 
-        build_toc_slide(self.prs, display_names, self._next_slide_num())
-
-    def _build_exec_summary(self, key: str, data: dict):
-        build_section_divider(self.prs, data.get("title", "Executive Summary"),
+    def _build_exec_summary(self, data: dict):
+        spec = self._next_spec()
+        style = self._style_for_spec(spec)
+        build_section_divider(self.prs, style, data.get("title", "Executive Summary"),
                               self._next_slide_num(),
-                              image_path=self._fetch_image(data, "section_divider"))
+                              image_path=self._fetch_image(data, "section_divider"),
+                              use_light=self._next_divider_light())
+
+        spec = self._next_spec()
+        style = self._style_for_spec(spec)
         build_executive_summary_slide(
-            self.prs,
+            self.prs, style,
             title=data.get("title", "Executive Summary"),
             summary_text=data.get("summary", ""),
             key_points=data.get("key_points", []),
@@ -142,109 +251,121 @@ class ProposalPPTGenerator:
 
     def _build_content_section(self, key: str, data: dict):
         title = data.get("title", key.replace("_", " ").title())
-        build_section_divider(self.prs, title, self._next_slide_num(),
-                              image_path=self._fetch_image(data, "section_divider"))
+
+        spec = self._next_spec()
+        style = self._style_for_spec(spec)
+        build_section_divider(self.prs, style, title, self._next_slide_num(),
+                              image_path=self._fetch_image(data, "section_divider"),
+                              use_light=self._next_divider_light())
 
         slides = data.get("slides", [])
         if slides:
             for slide_data in slides:
                 layout = slide_data.get("layout")
-                if layout:
-                    build_slide_by_layout(
-                        self.prs, layout, slide_data,
-                        slide_number=self._next_slide_num(),
-                    )
-                else:
-                    build_content_slide(
-                        self.prs,
+                image_path = self._fetch_image(slide_data, "content")
+                spec = self._next_spec()
+                style = self._style_for_spec(spec)
+
+                if layout and layout in PHOTO_ELIGIBLE_LAYOUTS and image_path:
+                    use_dark = self._photo_side_counter % 4 == 3
+                    build_content_photo_slide(
+                        self.prs, style,
                         title=slide_data.get("title", title),
                         body_text=slide_data.get("body", ""),
                         bullets=slide_data.get("bullets", []),
+                        image_path=image_path,
+                        prefer_left=self._next_photo_side(),
+                        use_dark=use_dark,
                         slide_number=self._next_slide_num(),
                     )
+                elif layout:
+                    build_slide_by_layout(
+                        self.prs, layout, style, slide_data,
+                        slide_number=self._next_slide_num(),
+                    )
+                else:
+                    if image_path:
+                        build_content_photo_slide(
+                            self.prs, style,
+                            title=slide_data.get("title", title),
+                            body_text=slide_data.get("body", ""),
+                            bullets=slide_data.get("bullets", []),
+                            image_path=image_path,
+                            prefer_left=self._next_photo_side(),
+                            slide_number=self._next_slide_num(),
+                        )
+                    else:
+                        build_content_slide(
+                            self.prs, style,
+                            title=slide_data.get("title", title),
+                            body_text=slide_data.get("body", ""),
+                            bullets=slide_data.get("bullets", []),
+                            slide_number=self._next_slide_num(),
+                        )
         else:
             layout = data.get("layout")
+            spec = self._next_spec()
+            style = self._style_for_spec(spec)
             if layout:
                 build_slide_by_layout(
-                    self.prs, layout, data,
+                    self.prs, layout, style, data,
                     slide_number=self._next_slide_num(),
                 )
             else:
                 build_content_slide(
-                    self.prs,
+                    self.prs, style,
                     title=title,
                     body_text=data.get("body", ""),
                     bullets=data.get("bullets", []),
                     slide_number=self._next_slide_num(),
                 )
 
-    def _build_two_col_section(self, key: str, data: dict):
-        title = data.get("title", key.replace("_", " ").title())
-        build_section_divider(self.prs, title, self._next_slide_num(),
-                              image_path=self._fetch_image(data, "section_divider"))
-
-        layout = data.get("layout")
-        if layout:
-            build_slide_by_layout(
-                self.prs, layout, data,
-                slide_number=self._next_slide_num(),
-            )
-        elif data.get("left") and data.get("right"):
-            build_two_column_slide(
-                self.prs,
-                title=title,
-                left_title=data["left"].get("title", ""),
-                left_bullets=data["left"].get("bullets", []),
-                right_title=data["right"].get("title", ""),
-                right_bullets=data["right"].get("bullets", []),
-                slide_number=self._next_slide_num(),
-            )
-        else:
-            build_content_slide(
-                self.prs, title=title,
-                body_text=data.get("body", ""),
-                bullets=data.get("bullets", []),
-                slide_number=self._next_slide_num(),
-            )
-
-    def _build_timeline(self, key: str, data: dict):
+    def _build_timeline(self, data: dict):
         title = data.get("title", "Timeline")
-        build_section_divider(self.prs, title, self._next_slide_num(),
-                              image_path=self._fetch_image(data, "timeline"))
-        build_timeline_slide(
-            self.prs,
-            title=title,
-            phases=data.get("phases", []),
-            slide_number=self._next_slide_num(),
-        )
+        spec = self._next_spec()
+        style = self._style_for_spec(spec)
+        build_section_divider(self.prs, style, title, self._next_slide_num(),
+                              image_path=self._fetch_image(data, "timeline"),
+                              use_light=self._next_divider_light())
+        spec = self._next_spec()
+        style = self._style_for_spec(spec)
+        build_timeline_slide(self.prs, style, title=title,
+                             phases=data.get("phases", []),
+                             slide_number=self._next_slide_num())
 
-    def _build_team(self, key: str, data: dict):
+    def _build_team(self, data: dict):
         title = data.get("title", "Team Structure")
-        build_section_divider(self.prs, title, self._next_slide_num(),
-                              image_path=self._fetch_image(data, "team"))
-        build_team_slide(
-            self.prs,
-            title=title,
-            team_members=data.get("members", []),
-            slide_number=self._next_slide_num(),
-        )
+        spec = self._next_spec()
+        style = self._style_for_spec(spec)
+        build_section_divider(self.prs, style, title, self._next_slide_num(),
+                              image_path=self._fetch_image(data, "team"),
+                              use_light=self._next_divider_light())
+        spec = self._next_spec()
+        style = self._style_for_spec(spec)
+        build_team_slide(self.prs, style, title=title,
+                         team_members=data.get("members", []),
+                         slide_number=self._next_slide_num())
 
-    def _build_commercials(self, key: str, data: dict):
+    def _build_commercials(self, data: dict):
         title = data.get("title", "Commercials")
-        build_section_divider(self.prs, title, self._next_slide_num(),
-                              image_path=self._fetch_image(data, "content"))
-        build_commercials_slide(
-            self.prs,
-            title=title,
-            rows=data.get("rows", []),
-            total=data.get("total", ""),
-            assumptions=data.get("assumptions", []),
-            slide_number=self._next_slide_num(),
-        )
+        spec = self._next_spec()
+        style = self._style_for_spec(spec)
+        build_section_divider(self.prs, style, title, self._next_slide_num(),
+                              image_path=self._fetch_image(data, "content"),
+                              use_light=self._next_divider_light())
+        spec = self._next_spec()
+        style = self._style_for_spec(spec)
+        build_commercials_slide(self.prs, style, title=title,
+                                rows=data.get("rows", []),
+                                total=data.get("total", ""),
+                                assumptions=data.get("assumptions", []),
+                                slide_number=self._next_slide_num())
 
-    def _build_closing(self, key: str, data: dict):
+    def _build_closing(self, data: dict):
+        spec = self._next_spec()
+        style = self._style_for_spec(spec)
         build_closing_slide(
-            self.prs,
+            self.prs, style,
             title=data.get("title", "Thank You"),
             contact_name=data.get("contact_name", ""),
             contact_email=data.get("contact_email", ""),
@@ -254,9 +375,10 @@ class ProposalPPTGenerator:
         )
 
 
-def generate_proposal_pptx(plan: dict, output_path: str | Path) -> Path:
+def generate_proposal_pptx(plan: dict, output_path: str | Path,
+                           template_name: str | None = None) -> Path:
     """Convenience function to generate a PPTX from a plan dict."""
-    generator = ProposalPPTGenerator(plan)
+    generator = ProposalPPTGenerator(plan, template_name=template_name)
     return generator.generate(output_path)
 
 
