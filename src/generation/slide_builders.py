@@ -1,12 +1,11 @@
-"""Xebia Proposal Slide Builders — Dynamic Template-Based Design.
+"""Xebia Proposal Slide Builders — Dynamic Design System.
 
-Uses multiple Xebia PPTX templates with dynamic theme variations.
-Each proposal gets a unique visual identity through template rotation,
-color palette variation, and decorative element randomization.
+All builders accept a SlideStyle parameter that provides colors, fonts,
+and accent treatments generated uniquely for each proposal by the AI
+design system. No hardcoded colors or repetitive patterns.
 
-Canvas: 13.33in x 7.50in (widescreen 16:9)
-Primary: #6C1D5F (deep purple)
-Font: Arial
+Canvas: 13.333 x 7.500 inches (widescreen 16:9)
+Template: xebia_retail.pptx
 """
 
 import sys
@@ -15,106 +14,90 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from pptx import Presentation
-from pptx.util import Inches, Pt, Emu
+from pptx.util import Inches, Pt
 from pptx.enum.shapes import MSO_SHAPE
-from pptx.enum.text import PP_ALIGN, MSO_ANCHOR
+from pptx.enum.text import PP_ALIGN
 from pptx.dml.color import RGBColor
 
-from design_system.brand import colors, typography, spacing, theme
-from generation.template_engine import (
-    ThemeConfig, generate_theme, create_themed_presentation,
-    add_decorative_element,
-)
+from generation.design_generator import SlideStyle, ProposalDesignSystem
+from generation.template_engine import create_themed_presentation, add_world_map
+from generation.design_engine.blueprints import get_blueprint, render_blueprint
 
-TEMPLATE_PATH = Path(__file__).resolve().parent.parent.parent / "templates" / "xebia_retail.pptx"
+# ── Layout geometry (from template placeholder analysis) ──────
+# These are physical constraints, not design choices.
 
-_active_theme: ThemeConfig | None = None
+SLIDE_W = 13.333
+SLIDE_H = 7.500
+MARGIN_L = 0.61
+CONTENT_L = 0.61
+CONTENT_W = 12.13
+CONTENT_R = 12.74
+TITLE_TOP = 0.60
+TITLE_H = 1.24
+CONTENT_TOP = 2.00
+CONTENT_BOTTOM = 6.90
+CONTENT_H = 4.90
+FOOTER_Y = 6.90
 
-# ============================================================
-# HELPERS
-# ============================================================
+ACCENT_LINE_Y = 1.92
+ACCENT_LINE_H = 0.03
+
+# Font sizes — constrained by slide geometry to prevent overflow.
+SZ_HERO = 32
+SZ_SECTION = 28
+SZ_TITLE = 24
+SZ_SUBTITLE = 14
+SZ_BODY = 12
+SZ_SMALL = 10
+SZ_TINY = 9
+
+
+# ── Core helpers ──────────────────────────────────────────────
 
 def _rgb(hex_str: str) -> RGBColor:
     h = hex_str.lstrip("#")
     return RGBColor(int(h[0:2], 16), int(h[2:4], 16), int(h[4:6], 16))
 
 
-def _c(key: str) -> RGBColor:
-    c = colors()
-    lookup = {
-        "purple": c["primary"]["purple"],
-        "purple_dark": c["primary"]["purple_dark"],
-        "purple_light": c["primary"]["purple_light"],
-        "purple_muted": c["primary"]["purple_muted"],
-        "purple_soft": c["primary"]["purple_soft"],
-        "purple_bg": c["primary"]["purple_bg"],
-        "white": c["neutral"]["white"],
-        "off_white": c["neutral"]["off_white"],
-        "light_gray": c["neutral"]["light_gray"],
-        "mid_gray": c["neutral"]["mid_gray"],
-        "dark_gray": c["neutral"]["dark_gray"],
-        "charcoal": c["neutral"]["charcoal"],
-        "black": c["neutral"]["black"],
-        "teal": c["accent"]["teal"],
-        "blue": c["accent"]["blue"],
-        "light_blue": c["accent"]["light_blue"],
-        "green": c["accent"]["green"],
-        "orange": c["accent"]["orange"],
-        "gold": c["accent"]["gold"],
-        "red": c["accent"]["red"],
-    }
-    return _rgb(lookup.get(key, c["primary"]["purple"]))
-
-
-ACCENT_COLORS = ["purple", "teal", "blue", "green", "orange", "light_blue"]
-
-
-def create_presentation(proposal_context: dict = None) -> Presentation:
-    """Create a Presentation with a dynamically generated theme."""
-    global _active_theme
-    _active_theme = generate_theme(proposal_context)
-    return create_themed_presentation(_active_theme)
-
-
-def get_active_theme() -> ThemeConfig | None:
-    return _active_theme
+def create_presentation(ds: ProposalDesignSystem, template_path: str | None = None) -> Presentation:
+    if template_path is None:
+        from generation.template_engine import generate_theme
+        template_path = generate_theme()
+    return create_themed_presentation(template_path)
 
 
 def _get_layout(prs: Presentation, name: str):
-    """Find a slide layout by name, with smart fallbacks across templates."""
     for layout in prs.slide_layouts:
         if layout.name == name:
             return layout
-    fallback_names = ["Content_Basic", "Title Content/White", "Content Title", "Blank"]
-    for fb in fallback_names:
+    fallbacks = ["Content_Basic", "Title Content/White", "Content Title", "Blank"]
+    for fb in fallbacks:
         for layout in prs.slide_layouts:
             if fb in layout.name:
                 return layout
     return prs.slide_layouts[0]
 
 
-def _set_text(tf, text: str, size: float, color: RGBColor,
+def _set_text(tf, text: str, size: float, color: str,
               bold: bool = False, alignment=None, font_name: str = "Arial"):
     tf.word_wrap = True
-    for para in tf.paragraphs:
-        para.text = ""
     p = tf.paragraphs[0]
     p.text = str(text)
     p.font.size = Pt(size)
-    p.font.color.rgb = color
+    p.font.color.rgb = _rgb(color)
     p.font.bold = bold
     p.font.name = font_name
     if alignment:
         p.alignment = alignment
 
 
-def _add_paragraph(tf, text: str, size: float, color: RGBColor,
-                   bold: bool = False, alignment=None, space_before: float = 0,
-                   font_name: str = "Arial"):
+def _add_paragraph(tf, text: str, size: float, color: str,
+                   bold: bool = False, alignment=None,
+                   space_before: float = 0, font_name: str = "Arial"):
     p = tf.add_paragraph()
     p.text = str(text)
     p.font.size = Pt(size)
-    p.font.color.rgb = color
+    p.font.color.rgb = _rgb(color)
     p.font.bold = bold
     p.font.name = font_name
     if alignment:
@@ -126,16 +109,20 @@ def _add_paragraph(tf, text: str, size: float, color: RGBColor,
 
 def _add_shape(slide, shape_type, left, top, width, height,
                fill_color=None, line_color=None, line_width=None):
+    left = max(0, min(left, SLIDE_W - 0.01))
+    top = max(0, min(top, SLIDE_H - 0.01))
+    width = min(width, SLIDE_W - left)
+    height = min(height, SLIDE_H - top)
     shape = slide.shapes.add_shape(
         shape_type, Inches(left), Inches(top), Inches(width), Inches(height)
     )
     if fill_color:
         shape.fill.solid()
-        shape.fill.fore_color.rgb = fill_color
+        shape.fill.fore_color.rgb = _rgb(fill_color) if isinstance(fill_color, str) else fill_color
     else:
         shape.fill.background()
     if line_color:
-        shape.line.color.rgb = line_color
+        shape.line.color.rgb = _rgb(line_color) if isinstance(line_color, str) else line_color
         if line_width:
             shape.line.width = Pt(line_width)
     else:
@@ -144,30 +131,76 @@ def _add_shape(slide, shape_type, left, top, width, height,
 
 
 def _add_textbox(slide, left, top, width, height, text, size, color,
-                 bold=False, alignment=None):
+                 bold=False, alignment=None, font_name="Poppins"):
+    left = max(0, min(left, SLIDE_W - 0.1))
+    top = max(0, min(top, SLIDE_H - 0.1))
+    width = min(width, SLIDE_W - left)
+    height = min(height, SLIDE_H - top)
     tx = slide.shapes.add_textbox(
         Inches(left), Inches(top), Inches(width), Inches(height)
     )
     tf = tx.text_frame
     tf.word_wrap = True
-    _set_text(tf, text, size, color, bold=bold, alignment=alignment)
+    _set_text(tf, text, size, color, bold=bold, alignment=alignment, font_name=font_name)
     return tx
 
 
 def _get_ph(slide, idx: int):
-    """Get placeholder by index, return None if not found."""
     try:
         return slide.placeholders[idx]
     except (KeyError, IndexError):
         return None
 
 
+def _fill_ph(slide, idx: int, text: str, size: float = None,
+             color: str = None, bold: bool = None, alignment=None,
+             font_name: str = "Arial"):
+    ph = _get_ph(slide, idx)
+    if ph is None:
+        return None
+    tf = ph.text_frame
+    tf.word_wrap = True
+    p = tf.paragraphs[0]
+    p.text = str(text)
+    if size:
+        p.font.size = Pt(size)
+    if color:
+        p.font.color.rgb = _rgb(color)
+    if bold is not None:
+        p.font.bold = bold
+    p.font.name = font_name
+    if alignment:
+        p.alignment = alignment
+    return ph
+
+
+def _fill_ph_multi(slide, idx: int, lines: list[str],
+                   size: float = SZ_BODY, color: str = "#595959",
+                   bold: bool = False, bullet_char: str = "",
+                   font_name: str = "Arial"):
+    ph = _get_ph(slide, idx)
+    if ph is None:
+        return None
+    tf = ph.text_frame
+    tf.word_wrap = True
+    for i, line in enumerate(lines):
+        p = tf.paragraphs[0] if i == 0 else tf.add_paragraph()
+        prefix = f"{bullet_char} " if bullet_char else ""
+        p.text = f"{prefix}{line}"
+        p.font.size = Pt(size)
+        p.font.color.rgb = _rgb(color)
+        p.font.bold = bold
+        p.font.name = font_name
+        p.space_before = Pt(4) if i > 0 else Pt(0)
+    return ph
+
+
+# ── Picture placeholder handling ──────────────────────────────
+
 def _get_picture_placeholders(slide):
-    """Find PICTURE placeholder indices on a slide."""
     from pptx.oxml.ns import qn
     pic_indices = []
-    spTree = slide.shapes._spTree
-    for sp in spTree.iterchildren(qn('p:sp')):
+    for sp in slide.shapes._spTree.iterchildren(qn('p:sp')):
         nvSpPr = sp.find(qn('p:nvSpPr'))
         if nvSpPr is not None:
             nvPr = nvSpPr.find(qn('p:nvPr'))
@@ -181,7 +214,6 @@ def _get_picture_placeholders(slide):
 
 
 def _remove_picture_placeholders(slide):
-    """Remove PICTURE placeholders so empty 'add a photo' boxes don't appear."""
     from pptx.oxml.ns import qn
     spTree = slide.shapes._spTree
     to_remove = []
@@ -198,41 +230,32 @@ def _remove_picture_placeholders(slide):
 
 
 def _insert_image_into_placeholder(slide, image_path: str) -> bool:
-    """Insert an image into the first PICTURE placeholder on the slide."""
     pic_indices = _get_picture_placeholders(slide)
     if not pic_indices or not image_path:
         return False
     try:
         ph = slide.placeholders[pic_indices[0]]
         ph.insert_picture(image_path)
+        from pptx.oxml.ns import qn
+        spTree = slide.shapes._spTree
         for idx in pic_indices[1:]:
-            _remove_single_picture_placeholder(slide, idx)
+            for sp in list(spTree.iterchildren(qn('p:sp'))):
+                nvSpPr = sp.find(qn('p:nvSpPr'))
+                if nvSpPr is not None:
+                    nvPr = nvSpPr.find(qn('p:nvPr'))
+                    if nvPr is not None:
+                        ph_el = nvPr.find(qn('p:ph'))
+                        if ph_el is not None and ph_el.get('type') == 'pic':
+                            ph_idx = ph_el.get('idx')
+                            if ph_idx is not None and int(ph_idx) == idx:
+                                spTree.remove(sp)
         return True
     except Exception:
         _remove_picture_placeholders(slide)
         return False
 
 
-def _remove_single_picture_placeholder(slide, idx: int):
-    """Remove a specific PICTURE placeholder by index."""
-    from pptx.oxml.ns import qn
-    spTree = slide.shapes._spTree
-    for sp in list(spTree.iterchildren(qn('p:sp'))):
-        nvSpPr = sp.find(qn('p:nvSpPr'))
-        if nvSpPr is not None:
-            nvPr = nvSpPr.find(qn('p:nvPr'))
-            if nvPr is not None:
-                ph = nvPr.find(qn('p:ph'))
-                if ph is not None and ph.get('type') == 'pic':
-                    ph_idx = ph.get('idx')
-                    if ph_idx is not None and int(ph_idx) == idx:
-                        spTree.remove(sp)
-                        return
-
-
 def _add_slide(prs: Presentation, layout_name: str, image_path: str = None):
-    """Add a slide from a named layout. If image_path is provided, insert it
-    into the first PICTURE placeholder; otherwise remove all picture placeholders."""
     layout = _get_layout(prs, layout_name)
     slide = prs.slides.add_slide(layout)
     if image_path:
@@ -243,120 +266,189 @@ def _add_slide(prs: Presentation, layout_name: str, image_path: str = None):
     return slide
 
 
-def _fill_placeholder(slide, idx: int, text: str, size: float = None,
-                      color: RGBColor = None, bold: bool = None,
-                      alignment=None, font_name: str = "Arial"):
-    """Fill a placeholder by index, with optional formatting overrides."""
-    try:
-        ph = slide.placeholders[idx]
-    except (KeyError, IndexError):
-        return None
-    tf = ph.text_frame
-    tf.word_wrap = True
-    p = tf.paragraphs[0]
-    p.text = str(text)
-    if size:
-        p.font.size = Pt(size)
-    if color:
-        p.font.color.rgb = color
-    if bold is not None:
-        p.font.bold = bold
-    if font_name:
-        p.font.name = font_name
-    if alignment:
-        p.alignment = alignment
-    return ph
+# ── Visual treatment engine ───────────────────────────────────
+
+def _apply_composition(slide, style: SlideStyle):
+    """Apply visual treatment to a slide.
+
+    When style.blueprint_id is set, renders the full blueprint (background +
+    zones + accents) from the design engine. Otherwise falls back to the
+    legacy composition modes for backward compatibility.
+
+    Mutates style.title_color, style.body_color, style.card_bg, style.border_color
+    based on whether the background is dark.
+    Must be called BEFORE any _fill_ph or _add_textbox calls.
+    """
+    if style.blueprint_id and style.design_theme:
+        blueprint = get_blueprint(style.blueprint_id)
+        rendered = render_blueprint(slide, blueprint, style.design_theme)
+        if rendered.bg_result.is_dark:
+            style.title_color = "#FFFFFF"
+            style.body_color = "#D4D4D8"
+            style.card_bg = "#2A2A3A"
+            style.border_color = "#3F3F50"
+        return
+
+    mode = style.composition
+    c = style.accent_color
+
+    if mode == "bold_header":
+        _add_shape(slide, MSO_SHAPE.RECTANGLE, 0, 0, SLIDE_W, 1.85, fill_color=c)
+        style.title_color = style.palette.text_light
+
+    elif mode == "dark_full":
+        bg = slide.shapes.add_shape(
+            MSO_SHAPE.RECTANGLE, Inches(0), Inches(0),
+            Inches(SLIDE_W), Inches(SLIDE_H)
+        )
+        bg.fill.solid()
+        bg.fill.fore_color.rgb = _rgb(style.palette.bg_dark)
+        bg.line.fill.background()
+        sp = bg._element
+        sp.getparent().remove(sp)
+        slide.shapes._spTree.insert(2, sp)
+        style.title_color = style.palette.text_light
+        style.body_color = "#D4D4D8"
+        style.card_bg = "#2A2A3A"
+        style.border_color = "#3F3F50"
+
+    elif mode == "top_bar":
+        _add_shape(slide, MSO_SHAPE.RECTANGLE, 0, 0, SLIDE_W, 0.40, fill_color=c)
+
+    elif mode == "left_bar":
+        _add_shape(slide, MSO_SHAPE.RECTANGLE, 0, 0, 0.18, SLIDE_H, fill_color=c)
+
+    elif mode == "clean":
+        _add_shape(slide, MSO_SHAPE.RECTANGLE,
+                   CONTENT_L, ACCENT_LINE_Y, CONTENT_W, ACCENT_LINE_H, fill_color=c)
+
+    elif mode == "bottom_band":
+        _add_shape(slide, MSO_SHAPE.RECTANGLE,
+                   0, SLIDE_H - 0.35, SLIDE_W, 0.35, fill_color=c)
+    # "none" — no decoration
 
 
-def _fill_placeholder_multi(slide, idx: int, lines: list[str],
-                            size: float = 12, color: RGBColor = None,
-                            bold: bool = False, bullet_char: str = "",
-                            font_name: str = "Arial"):
-    """Fill a placeholder with multiple lines/paragraphs."""
-    try:
-        ph = slide.placeholders[idx]
-    except (KeyError, IndexError):
-        return None
-    tf = ph.text_frame
-    tf.word_wrap = True
-    color = color or _c("charcoal")
-    for i, line in enumerate(lines):
-        if i == 0:
-            p = tf.paragraphs[0]
-        else:
-            p = tf.add_paragraph()
-        prefix = f"{bullet_char} " if bullet_char else ""
-        p.text = f"{prefix}{line}"
-        p.font.size = Pt(size)
-        p.font.color.rgb = color
-        p.font.bold = bold
-        p.font.name = font_name
-        p.space_before = Pt(4) if i > 0 else Pt(0)
-    return ph
+def _add_card(slide, x, y, w, h, style: SlideStyle, accent_color=None):
+    """Add a card shape styled according to the design system."""
+    cs = style.card_style
+    ac = accent_color or style.accent_color
+    fill = style.card_bg
+
+    if cs == "rounded_shadow":
+        shadow_offset = 0.03
+        _add_shape(slide, MSO_SHAPE.ROUNDED_RECTANGLE,
+                   x + shadow_offset, y + shadow_offset, w, h,
+                   fill_color="#E0E0E0")
+        card = _add_shape(slide, MSO_SHAPE.ROUNDED_RECTANGLE, x, y, w, h,
+                          fill_color=fill, line_color=style.border_color, line_width=0.5)
+    elif cs == "flat_bordered":
+        card = _add_shape(slide, MSO_SHAPE.RECTANGLE, x, y, w, h,
+                          fill_color=fill, line_color=style.border_color, line_width=1)
+    elif cs == "outlined":
+        card = _add_shape(slide, MSO_SHAPE.ROUNDED_RECTANGLE, x, y, w, h,
+                          fill_color=None, line_color=ac, line_width=1.5)
+    elif cs == "minimal":
+        card = _add_shape(slide, MSO_SHAPE.RECTANGLE, x, y, w, h,
+                          fill_color=fill, line_color=style.border_color, line_width=0.25)
+    else:  # accent_top (default)
+        card = _add_shape(slide, MSO_SHAPE.ROUNDED_RECTANGLE, x, y, w, h,
+                          fill_color=fill, line_color=style.border_color, line_width=0.75)
+        _add_shape(slide, MSO_SHAPE.RECTANGLE, x, y, w, 0.06, fill_color=ac)
+
+    return card
 
 
-# ============================================================
-# COVER SLIDE — Main-cover_light
-# ============================================================
+def _clear_body_ph(slide):
+    body_ph = _get_ph(slide, 1)
+    if body_ph:
+        body_ph.text_frame.paragraphs[0].text = ""
+    return body_ph
 
-def build_cover_slide(prs: Presentation, title: str, subtitle: str = "",
-                      customer: str = "", date: str = "",
+
+# ── COVER ─────────────────────────────────────────────────────
+
+def build_cover_slide(prs: Presentation, style: SlideStyle, title: str,
+                      subtitle: str = "", customer: str = "", date: str = "",
                       image_path: str = None) -> None:
-    slide = _add_slide(prs, "Main-cover_dark", image_path=image_path)
+    slide = _add_slide(prs, "Content_Basic", image_path=image_path)
+    _apply_composition(slide, style)
+    _clear_body_ph(slide)
 
-    _fill_placeholder(slide, 0, title, size=28, color=_c("white"), bold=True)
+    title_y = 2.50
+    _add_textbox(slide, CONTENT_L, title_y, CONTENT_W, 1.80,
+                 title, SZ_HERO, style.title_color,
+                 bold=True, font_name=style.heading_font)
 
-    sub_parts = []
-    if subtitle:
-        sub_parts.append(subtitle)
-    if customer:
-        sub_parts.append(f"Prepared for {customer}")
-    if date:
-        sub_parts.append(date)
+    sub_parts = [p for p in [subtitle, f"Prepared for {customer}" if customer else "", date] if p]
     if sub_parts:
-        _fill_placeholder(slide, 1, " | ".join(sub_parts), size=14, color=_c("white"))
+        _add_textbox(slide, CONTENT_L, title_y + 1.90, CONTENT_W, 0.60,
+                     " | ".join(sub_parts), SZ_SUBTITLE, style.body_color,
+                     font_name=style.body_font)
 
 
-# ============================================================
-# TABLE OF CONTENTS — Table of contents layout
-# ============================================================
+# ── TABLE OF CONTENTS ─────────────────────────────────────────
 
-def build_toc_slide(prs: Presentation, items: list[str], slide_number: int = 0) -> None:
-    slide = _add_slide(prs, "Table of contents")
+def build_toc_slide(prs: Presentation, style: SlideStyle,
+                    items: list[str], slide_number: int = 0) -> None:
+    slide = _add_slide(prs, "Content_Basic")
+    _apply_composition(slide, style)
+    _fill_ph(slide, 0, "Table of Contents", size=SZ_TITLE, color=style.title_color,
+             bold=True, font_name=style.heading_font)
+    _clear_body_ph(slide)
 
     mid = len(items) // 2 + len(items) % 2
-    col1 = items[:mid]
-    col2 = items[mid:]
+    col1_items = items[:mid]
+    col2_items = items[mid:]
 
-    col1_text = [f"{i+1:02d}  {item}" for i, item in enumerate(col1)]
-    col2_text = [f"{mid+i+1:02d}  {item}" for i, item in enumerate(col2)]
+    col_w = (CONTENT_W - 0.40) / 2
+    item_h = 0.45
+    start_y = CONTENT_TOP + 0.15
 
-    _fill_placeholder_multi(slide, 1, col1_text, size=13, color=_c("charcoal"))
-    if col2_text:
-        _fill_placeholder_multi(slide, 11, col2_text, size=13, color=_c("charcoal"))
+    for i, item in enumerate(col1_items):
+        y = start_y + i * item_h
+        num_text = f"{i+1:02d}"
+        _add_textbox(slide, CONTENT_L, y, 0.55, item_h,
+                     num_text, 14, style.accent_color, bold=True,
+                     font_name=style.heading_font)
+        _add_textbox(slide, CONTENT_L + 0.55, y, col_w - 0.55, item_h,
+                     item, 13, style.body_color, font_name=style.body_font)
+
+    for i, item in enumerate(col2_items):
+        y = start_y + i * item_h
+        num = mid + i + 1
+        num_text = f"{num:02d}"
+        col2_x = CONTENT_L + col_w + 0.40
+        _add_textbox(slide, col2_x, y, 0.55, item_h,
+                     num_text, 14, style.accent_color, bold=True,
+                     font_name=style.heading_font)
+        _add_textbox(slide, col2_x + 0.55, y, col_w - 0.55, item_h,
+                     item, 13, style.body_color, font_name=style.body_font)
 
 
-# ============================================================
-# SECTION DIVIDER — Chapter_dark
-# ============================================================
+# ── SECTION DIVIDER ───────────────────────────────────────────
 
-def build_section_divider(prs: Presentation, title: str, slide_number: int = 0,
-                          image_path: str = None) -> None:
-    slide = _add_slide(prs, "Chapter_dark", image_path=image_path)
+def build_section_divider(prs: Presentation, style: SlideStyle, title: str,
+                          slide_number: int = 0, image_path: str = None,
+                          use_light: bool = False) -> None:
+    slide = _add_slide(prs, "Content_Basic", image_path=image_path)
+    _apply_composition(slide, style)
+    _clear_body_ph(slide)
 
-    _fill_placeholder(slide, 0, title, size=28, color=_c("white"), bold=True)
+    _add_textbox(slide, CONTENT_L, 2.80, CONTENT_W, 1.50,
+                 title, SZ_SECTION, style.title_color,
+                 bold=True, font_name=style.heading_font)
 
 
-# ============================================================
-# EXECUTIVE SUMMARY — Content_Basic with custom formatting
-# ============================================================
+# ── EXECUTIVE SUMMARY ─────────────────────────────────────────
 
-def build_executive_summary_slide(prs: Presentation, title: str,
-                                  summary_text: str = "", key_points: list[str] = None,
+def build_executive_summary_slide(prs: Presentation, style: SlideStyle,
+                                  title: str, summary_text: str = "",
+                                  key_points: list[str] = None,
                                   slide_number: int = 0) -> None:
     slide = _add_slide(prs, "Content_Basic")
-
-    _fill_placeholder(slide, 0, title, size=24, color=_c("black"), bold=True)
+    _apply_composition(slide, style)
+    _fill_ph(slide, 0, title, size=SZ_TITLE, color=style.title_color,
+             bold=True, font_name=style.heading_font)
 
     body_ph = _get_ph(slide, 1)
     if body_ph:
@@ -365,149 +457,193 @@ def build_executive_summary_slide(prs: Presentation, title: str,
         if summary_text:
             p = tf.paragraphs[0]
             p.text = summary_text
-            p.font.size = Pt(12)
-            p.font.color.rgb = _c("charcoal")
-            p.font.name = "Arial"
+            p.font.size = Pt(SZ_BODY)
+            p.font.color.rgb = _rgb(style.body_color)
+            p.font.name = style.body_font
             p.space_after = Pt(12)
 
         if key_points:
             p_header = tf.add_paragraph()
             p_header.text = "Key Highlights"
-            p_header.font.size = Pt(14)
-            p_header.font.color.rgb = _c("purple")
+            p_header.font.size = Pt(SZ_SUBTITLE)
+            p_header.font.color.rgb = _rgb(style.accent_color)
             p_header.font.bold = True
-            p_header.font.name = "Arial"
+            p_header.font.name = style.heading_font
             p_header.space_before = Pt(12)
 
             for point in key_points[:6]:
                 p = tf.add_paragraph()
-                p.text = f"•  {point}"
+                p.text = f"▸  {point}"
                 p.font.size = Pt(11)
-                p.font.color.rgb = _c("charcoal")
-                p.font.name = "Arial"
+                p.font.color.rgb = _rgb(style.body_color)
+                p.font.name = style.body_font
                 p.space_before = Pt(4)
 
 
-# ============================================================
-# CONTENT SLIDE — Content_Basic
-# ============================================================
+# ── CONTENT SLIDE ─────────────────────────────────────────────
 
-def build_content_slide(prs: Presentation, title: str,
+def build_content_slide(prs: Presentation, style: SlideStyle, title: str,
                         body_text: str = "", bullets: list[str] = None,
                         slide_number: int = 0) -> None:
     slide = _add_slide(prs, "Content_Basic")
-
-    _fill_placeholder(slide, 0, title, size=24, color=_c("black"), bold=True)
+    _apply_composition(slide, style)
+    _fill_ph(slide, 0, title, size=SZ_TITLE, color=style.title_color,
+             bold=True, font_name=style.heading_font)
 
     body_ph = _get_ph(slide, 1)
     if body_ph:
         tf = body_ph.text_frame
         tf.word_wrap = True
-
         first_para = True
         if body_text:
             p = tf.paragraphs[0]
             p.text = body_text
-            p.font.size = Pt(12)
-            p.font.color.rgb = _c("charcoal")
-            p.font.name = "Arial"
+            p.font.size = Pt(SZ_BODY)
+            p.font.color.rgb = _rgb(style.body_color)
+            p.font.name = style.body_font
             first_para = False
 
         if bullets:
             for bullet in bullets:
-                if first_para:
-                    p = tf.paragraphs[0]
-                    first_para = False
-                else:
-                    p = tf.add_paragraph()
-                p.text = f"•  {bullet}"
+                p = tf.paragraphs[0] if first_para else tf.add_paragraph()
+                first_para = False
+                p.text = f"▸  {bullet}"
                 p.font.size = Pt(11)
-                p.font.color.rgb = _c("charcoal")
-                p.font.name = "Arial"
+                p.font.color.rgb = _rgb(style.body_color)
+                p.font.name = style.body_font
                 p.space_before = Pt(4)
 
 
-# ============================================================
-# TWO COLUMN — Content_2 Columns
-# ============================================================
+# ── CONTENT WITH PHOTO ────────────────────────────────────────
 
-def build_two_column_slide(prs: Presentation, title: str,
+def build_content_photo_slide(prs: Presentation, style: SlideStyle, title: str,
+                              subtitle: str = "", body_text: str = "",
+                              bullets: list[str] = None,
+                              image_path: str = None,
+                              prefer_left: bool = False,
+                              use_dark: bool = False,
+                              slide_number: int = 0) -> None:
+    if use_dark:
+        layout = "Content_Photo-Big_left_dark" if prefer_left else "Content_Photo-Big_right_dark"
+        text_color = style.palette.text_light
+        body_clr = "#E0E0E0"
+    else:
+        layout = "Content_Photo-Big_left" if prefer_left else "Content_Photo-Big_right"
+        text_color = style.title_color
+        body_clr = style.body_color
+
+    slide = _add_slide(prs, layout, image_path=image_path)
+    _fill_ph(slide, 0, title, size=SZ_TITLE, color=text_color,
+             bold=True, font_name=style.heading_font)
+
+    if subtitle:
+        _fill_ph(slide, 11, subtitle, size=SZ_SUBTITLE, color=style.accent_color,
+                 bold=True, font_name=style.heading_font)
+
+    body_ph = _get_ph(slide, 1)
+    if body_ph:
+        tf = body_ph.text_frame
+        tf.word_wrap = True
+        first_para = True
+        if body_text:
+            p = tf.paragraphs[0]
+            p.text = body_text
+            p.font.size = Pt(SZ_BODY)
+            p.font.color.rgb = _rgb(body_clr)
+            p.font.name = style.body_font
+            first_para = False
+        if bullets:
+            for bullet in bullets:
+                p = tf.paragraphs[0] if first_para else tf.add_paragraph()
+                first_para = False
+                p.text = f"▸  {bullet}"
+                p.font.size = Pt(11)
+                p.font.color.rgb = _rgb(body_clr)
+                p.font.name = style.body_font
+                p.space_before = Pt(4)
+
+
+# ── TWO COLUMN ────────────────────────────────────────────────
+
+def build_two_column_slide(prs: Presentation, style: SlideStyle, title: str,
                            left_title: str = "", left_bullets: list[str] = None,
                            right_title: str = "", right_bullets: list[str] = None,
                            slide_number: int = 0) -> None:
     slide = _add_slide(prs, "Content_2 Columns")
-
-    _fill_placeholder(slide, 0, title, size=24, color=_c("black"), bold=True)
+    _apply_composition(slide, style)
+    _fill_ph(slide, 0, title, size=SZ_TITLE, color=style.title_color,
+             bold=True, font_name=style.heading_font)
 
     if left_title:
-        _fill_placeholder(slide, 11, left_title, size=14, color=_c("purple"), bold=True)
+        _fill_ph(slide, 11, left_title, size=SZ_SUBTITLE, color=style.accent_color,
+                 bold=True, font_name=style.heading_font)
     if left_bullets:
-        _fill_placeholder_multi(slide, 1, left_bullets, size=11, bullet_char="•")
-
+        _fill_ph_multi(slide, 1, left_bullets, size=11, color=style.body_color,
+                       bullet_char="▸", font_name=style.body_font)
     if right_title:
-        _fill_placeholder(slide, 14, right_title, size=14, color=_c("purple"), bold=True)
+        _fill_ph(slide, 14, right_title, size=SZ_SUBTITLE, color=style.accent_color,
+                 bold=True, font_name=style.heading_font)
     if right_bullets:
-        _fill_placeholder_multi(slide, 13, right_bullets, size=11, bullet_char="•")
+        _fill_ph_multi(slide, 13, right_bullets, size=11, color=style.body_color,
+                       bullet_char="▸", font_name=style.body_font)
 
 
-# ============================================================
-# ICON GRID — Content_3 Columns or Content_4 Columns
-# ============================================================
+# ── ICON GRID ─────────────────────────────────────────────────
 
-def build_icon_grid_slide(prs: Presentation, title: str,
+def build_icon_grid_slide(prs: Presentation, style: SlideStyle, title: str,
                           items: list[dict], slide_number: int = 0) -> None:
-    num = len(items)
-    if num <= 3:
-        slide = _add_slide(prs, "Content_3 Columns")
-        _fill_placeholder(slide, 0, title, size=24, color=_c("black"), bold=True)
-        col_data = [(11, 1, 12), (17, 16, 18), (14, 13, 15)]
-        for i, item in enumerate(items[:3]):
-            header_idx, body_idx, pic_idx = col_data[i]
-            _fill_placeholder(slide, header_idx, item.get("label", ""), size=14, color=_c("purple"), bold=True)
-            _fill_placeholder(slide, body_idx, item.get("description", ""), size=11, color=_c("charcoal"))
-    else:
-        slide = _add_slide(prs, "Content_Basic")
-        _fill_placeholder(slide, 0, title, size=24, color=_c("black"), bold=True)
+    slide = _add_slide(prs, "Content_Basic")
+    _apply_composition(slide, style)
+    _fill_ph(slide, 0, title, size=SZ_TITLE, color=style.title_color,
+             bold=True, font_name=style.heading_font)
+    _clear_body_ph(slide)
 
-        body_ph = _get_ph(slide, 1)
-        if body_ph:
-            tf = body_ph.text_frame
-            tf.word_wrap = True
-            for i, item in enumerate(items[:8]):
-                if i == 0:
-                    p = tf.paragraphs[0]
-                else:
-                    p = tf.add_paragraph()
-                label = item.get("label", "")
-                desc = item.get("description", "")
-                run = p.add_run()
-                run.text = f"{label}: "
-                run.font.size = Pt(12)
-                run.font.color.rgb = _c("purple")
-                run.font.bold = True
-                run.font.name = "Arial"
-                run2 = p.add_run()
-                run2.text = desc
-                run2.font.size = Pt(11)
-                run2.font.color.rgb = _c("charcoal")
-                run2.font.name = "Arial"
-                p.space_before = Pt(6) if i > 0 else Pt(0)
+    accents = style.palette
+    cycle = [accents.primary, accents.accent1, accents.secondary,
+             accents.accent2, accents.accent3]
+
+    num_items = min(len(items), 9)
+    cols = 3 if num_items > 2 else num_items
+    rows = (num_items + cols - 1) // cols
+    gap_x, gap_y = 0.25, 0.20
+    card_w = (CONTENT_W - (cols - 1) * gap_x) / cols
+    card_h = min((CONTENT_H - (rows - 1) * gap_y) / rows, 2.2)
+
+    for i, item in enumerate(items[:num_items]):
+        col, row = i % cols, i // cols
+        x = CONTENT_L + col * (card_w + gap_x)
+        y = CONTENT_TOP + 0.1 + row * (card_h + gap_y)
+        color = cycle[i % len(cycle)]
+
+        _add_card(slide, x, y, card_w, card_h, style, accent_color=color)
+
+        icon_size = 0.42
+        _add_shape(slide, MSO_SHAPE.OVAL, x + 0.2, y + 0.2,
+                   icon_size, icon_size, fill_color=color)
+        initial = item.get("label", "X")[0].upper()
+        _add_textbox(slide, x + 0.2, y + 0.24, icon_size, icon_size - 0.08,
+                     initial, 14, style.palette.text_light, bold=True,
+                     alignment=PP_ALIGN.CENTER, font_name=style.heading_font)
+
+        _add_textbox(slide, x + 0.75, y + 0.22, card_w - 0.95, 0.35,
+                     item.get("label", ""), SZ_SUBTITLE, style.title_color,
+                     bold=True, font_name=style.heading_font)
+
+        desc = item.get("description", "")
+        if desc:
+            _add_textbox(slide, x + 0.2, y + 0.75, card_w - 0.4, card_h - 0.95,
+                         desc, SZ_SMALL, style.body_color, font_name=style.body_font)
 
 
-# ============================================================
-# PROCESS FLOW — Content_Basic + custom shapes
-# ============================================================
+# ── PROCESS FLOW ──────────────────────────────────────────────
 
-def build_process_flow_slide(prs: Presentation, title: str,
+def build_process_flow_slide(prs: Presentation, style: SlideStyle, title: str,
                              steps: list[dict], slide_number: int = 0) -> None:
     slide = _add_slide(prs, "Content_Basic")
-
-    _fill_placeholder(slide, 0, title, size=24, color=_c("black"), bold=True)
-
-    # Clear body placeholder
-    body_ph = _get_ph(slide, 1)
-    if body_ph:
-        body_ph.text_frame.paragraphs[0].text = ""
+    _apply_composition(slide, style)
+    _fill_ph(slide, 0, title, size=SZ_TITLE, color=style.title_color,
+             bold=True, font_name=style.heading_font)
+    _clear_body_ph(slide)
 
     normalized = []
     for s in steps:
@@ -516,258 +652,303 @@ def build_process_flow_slide(prs: Presentation, title: str,
         else:
             normalized.append(s)
 
-    num_steps = min(len(normalized), 6)
-    total_w = 11.5
-    gap = 0.3
-    step_w = (total_w - (num_steps - 1) * gap) / num_steps
-    start_x = 0.8
-    bar_y = 2.8
+    cycle = [style.palette.primary, style.palette.accent1, style.palette.secondary,
+             style.palette.accent2, style.palette.accent3]
 
-    _add_shape(slide, MSO_SHAPE.RECTANGLE, start_x, bar_y, total_w, 0.03, fill_color=_c("light_gray"))
+    num_steps = min(len(normalized), 6)
+    gap = 0.20
+    step_w = (CONTENT_W - (num_steps - 1) * gap) / num_steps
+    circle_y = 2.30
+    circle_size = 0.50
+    card_top = 3.10
+    card_h = min(3.60, CONTENT_BOTTOM - card_top - 0.1)
+
+    _add_shape(slide, MSO_SHAPE.RECTANGLE,
+               CONTENT_L, circle_y + circle_size / 2 - 0.015,
+               CONTENT_W, 0.03, fill_color=style.border_color)
 
     for i, step in enumerate(normalized[:num_steps]):
-        x = start_x + i * (step_w + gap)
-        color = _c(ACCENT_COLORS[i % len(ACCENT_COLORS)])
+        x = CONTENT_L + i * (step_w + gap)
+        color = cycle[i % len(cycle)]
 
-        circle_size = 0.55
         cx = x + (step_w - circle_size) / 2
-        _add_shape(slide, MSO_SHAPE.OVAL, cx, 2.55, circle_size, circle_size, fill_color=color)
-        _add_textbox(slide, cx, 2.6, circle_size, circle_size - 0.1, str(i + 1), 16, _c("white"), bold=True, alignment=PP_ALIGN.CENTER)
+        _add_shape(slide, MSO_SHAPE.OVAL, cx, circle_y,
+                   circle_size, circle_size, fill_color=color)
+        _add_textbox(slide, cx, circle_y + 0.05, circle_size, circle_size - 0.1,
+                     str(i + 1), 16, style.palette.text_light, bold=True,
+                     alignment=PP_ALIGN.CENTER, font_name=style.heading_font)
 
-        card = _add_shape(slide, MSO_SHAPE.ROUNDED_RECTANGLE, x, 3.4, step_w, 3.0, fill_color=_c("white"))
-        card.line.color.rgb = _c("light_gray")
-        card.line.width = Pt(0.75)
-        _add_shape(slide, MSO_SHAPE.RECTANGLE, x, 3.4, step_w, 0.06, fill_color=color)
+        _add_card(slide, x, card_top, step_w, card_h, style, accent_color=color)
 
-        _add_textbox(slide, x + 0.1, 3.6, step_w - 0.2, 0.5, step.get("label", ""), 12, _c("black"), bold=True, alignment=PP_ALIGN.CENTER)
+        _add_textbox(slide, x + 0.1, card_top + 0.15, step_w - 0.2, 0.40,
+                     step.get("label", ""), 11, style.title_color, bold=True,
+                     alignment=PP_ALIGN.CENTER, font_name=style.heading_font)
 
         desc = step.get("description", "")
         if desc:
-            _add_textbox(slide, x + 0.1, 4.2, step_w - 0.2, 2.0, desc, 10, _c("dark_gray"), alignment=PP_ALIGN.CENTER)
+            _add_textbox(slide, x + 0.1, card_top + 0.60, step_w - 0.2, card_h - 0.80,
+                         desc, SZ_SMALL, style.body_color,
+                         alignment=PP_ALIGN.CENTER, font_name=style.body_font)
 
         if i < num_steps - 1:
             ax = x + step_w + 0.02
-            _add_shape(slide, MSO_SHAPE.RIGHT_ARROW, ax, 2.65, gap - 0.04, 0.3, fill_color=_c("purple_muted"))
+            muted = style.palette.accent1
+            _add_shape(slide, MSO_SHAPE.RIGHT_ARROW, ax, circle_y + 0.10,
+                       gap - 0.04, 0.30, fill_color=muted)
 
 
-# ============================================================
-# COMPARISON TABLE
-# ============================================================
+# ── COMPARISON TABLE ──────────────────────────────────────────
 
-def build_comparison_table_slide(prs: Presentation, title: str,
+def build_comparison_table_slide(prs: Presentation, style: SlideStyle, title: str,
                                  headers: list[str], rows: list[list[str]],
                                  slide_number: int = 0) -> None:
     slide = _add_slide(prs, "Content_Basic")
-
-    _fill_placeholder(slide, 0, title, size=24, color=_c("black"), bold=True)
-    body_ph = _get_ph(slide, 1)
-    if body_ph:
-        body_ph.text_frame.paragraphs[0].text = ""
+    _apply_composition(slide, style)
+    _fill_ph(slide, 0, title, size=SZ_TITLE, color=style.title_color,
+             bold=True, font_name=style.heading_font)
+    _clear_body_ph(slide)
 
     num_cols = len(headers)
     num_rows = min(len(rows) + 1, 12)
-    col_width = 11.8 / num_cols
-    row_height = min(0.5, 4.5 / num_rows)
+    row_height = min(0.50, 4.2 / num_rows)
+    table_w = min(CONTENT_W, 11.8)
 
-    table_shape = slide.shapes.add_table(num_rows, num_cols, Inches(0.6), Inches(2.2), Inches(11.8), Inches(row_height * num_rows))
+    table_shape = slide.shapes.add_table(
+        num_rows, num_cols,
+        Inches(CONTENT_L), Inches(CONTENT_TOP + 0.15),
+        Inches(table_w), Inches(row_height * num_rows)
+    )
     table = table_shape.table
-
+    col_w = table_w / num_cols
     for i in range(num_cols):
-        table.columns[i].width = Inches(col_width)
+        table.columns[i].width = Inches(col_w)
 
     for i, header in enumerate(headers):
         cell = table.cell(0, i)
         cell.text = header
         cell.fill.solid()
-        cell.fill.fore_color.rgb = _c("purple")
+        cell.fill.fore_color.rgb = _rgb(style.accent_color)
         for p in cell.text_frame.paragraphs:
             p.font.size = Pt(11)
-            p.font.color.rgb = _c("white")
+            p.font.color.rgb = _rgb(style.palette.text_light)
             p.font.bold = True
-            p.font.name = "Arial"
+            p.font.name = style.heading_font
             p.alignment = PP_ALIGN.CENTER
 
     for r_idx, row in enumerate(rows[:num_rows - 1]):
         for c_idx, val in enumerate(row[:num_cols]):
             cell = table.cell(r_idx + 1, c_idx)
             cell.text = str(val)
-            bg = _c("off_white") if r_idx % 2 == 0 else _c("white")
+            bg = style.card_bg if r_idx % 2 == 0 else "#FFFFFF"
             cell.fill.solid()
-            cell.fill.fore_color.rgb = bg
+            cell.fill.fore_color.rgb = _rgb(bg)
             for p in cell.text_frame.paragraphs:
-                p.font.size = Pt(10)
-                p.font.color.rgb = _c("charcoal")
-                p.font.name = "Arial"
+                p.font.size = Pt(SZ_SMALL)
+                p.font.color.rgb = _rgb(style.body_color)
+                p.font.name = style.body_font
 
 
-# ============================================================
-# STATS / KPI HIGHLIGHT
-# ============================================================
+# ── STATS HIGHLIGHT ───────────────────────────────────────────
 
-def build_stats_highlight_slide(prs: Presentation, title: str,
+def build_stats_highlight_slide(prs: Presentation, style: SlideStyle, title: str,
                                 stats: list[dict], slide_number: int = 0) -> None:
     slide = _add_slide(prs, "Content_Basic")
+    _apply_composition(slide, style)
+    _fill_ph(slide, 0, title, size=SZ_TITLE, color=style.title_color,
+             bold=True, font_name=style.heading_font)
+    _clear_body_ph(slide)
 
-    _fill_placeholder(slide, 0, title, size=24, color=_c("black"), bold=True)
-    body_ph = _get_ph(slide, 1)
-    if body_ph:
-        body_ph.text_frame.paragraphs[0].text = ""
+    cycle = [style.palette.primary, style.palette.accent1, style.palette.secondary,
+             style.palette.accent2, style.palette.accent3]
 
     num_stats = min(len(stats), 4)
-    card_w = (11.8 - (num_stats - 1) * 0.4) / num_stats
-    card_h = 4.2
-    card_y = 2.2
+    gap = 0.30
+    card_w = (CONTENT_W - (num_stats - 1) * gap) / num_stats
+    card_h = min(3.8, CONTENT_H - 0.2)
+    card_y = CONTENT_TOP + 0.1
 
     for i, stat in enumerate(stats[:4]):
-        x = 0.6 + i * (card_w + 0.4)
-        color = _c(ACCENT_COLORS[i % len(ACCENT_COLORS)])
+        x = CONTENT_L + i * (card_w + gap)
+        color = cycle[i % len(cycle)]
 
-        card = _add_shape(slide, MSO_SHAPE.ROUNDED_RECTANGLE, x, card_y, card_w, card_h, fill_color=_c("white"))
-        card.line.color.rgb = _c("light_gray")
-        card.line.width = Pt(0.75)
-        _add_shape(slide, MSO_SHAPE.RECTANGLE, x, card_y, card_w, 0.08, fill_color=color)
-        _add_shape(slide, MSO_SHAPE.OVAL, x + (card_w - 0.6) / 2, card_y + 0.4, 0.6, 0.6, fill_color=color)
+        _add_card(slide, x, card_y, card_w, card_h, style, accent_color=color)
 
-        _add_textbox(slide, x + 0.15, card_y + 1.2, card_w - 0.3, 1.0, str(stat.get("value", "")), 42, color, bold=True, alignment=PP_ALIGN.CENTER)
-        _add_textbox(slide, x + 0.15, card_y + 2.2, card_w - 0.3, 0.5, stat.get("label", ""), 13, _c("black"), bold=True, alignment=PP_ALIGN.CENTER)
+        icon_size = 0.50
+        _add_shape(slide, MSO_SHAPE.OVAL,
+                   x + (card_w - icon_size) / 2, card_y + 0.30,
+                   icon_size, icon_size, fill_color=color)
+
+        _add_textbox(slide, x + 0.1, card_y + 1.0, card_w - 0.2, 0.80,
+                     str(stat.get("value", "")), 36, color,
+                     bold=True, alignment=PP_ALIGN.CENTER, font_name=style.heading_font)
+
+        _add_textbox(slide, x + 0.1, card_y + 1.85, card_w - 0.2, 0.40,
+                     stat.get("label", ""), 13, style.title_color,
+                     bold=True, alignment=PP_ALIGN.CENTER, font_name=style.heading_font)
 
         sublabel = stat.get("description", "")
         if sublabel:
-            _add_textbox(slide, x + 0.15, card_y + 2.7, card_w - 0.3, 1.2, sublabel, 10, _c("dark_gray"), alignment=PP_ALIGN.CENTER)
+            _add_textbox(slide, x + 0.1, card_y + 2.30, card_w - 0.2, 1.2,
+                         sublabel, SZ_SMALL, style.body_color,
+                         alignment=PP_ALIGN.CENTER, font_name=style.body_font)
 
 
-# ============================================================
-# KEY-VALUE PAIRS
-# ============================================================
+# ── KEY-VALUE PAIRS ───────────────────────────────────────────
 
-def build_key_value_slide(prs: Presentation, title: str,
+def build_key_value_slide(prs: Presentation, style: SlideStyle, title: str,
                           pairs: list[dict], slide_number: int = 0) -> None:
     slide = _add_slide(prs, "Content_Basic")
+    _apply_composition(slide, style)
+    _fill_ph(slide, 0, title, size=SZ_TITLE, color=style.title_color,
+             bold=True, font_name=style.heading_font)
+    _clear_body_ph(slide)
 
-    _fill_placeholder(slide, 0, title, size=24, color=_c("black"), bold=True)
-    body_ph = _get_ph(slide, 1)
-    if body_ph:
-        body_ph.text_frame.paragraphs[0].text = ""
-
-    start_y = 2.2
-    row_h = 0.5
+    start_y = CONTENT_TOP + 0.1
+    row_h = 0.50
     key_w = 3.5
 
     for i, pair in enumerate(pairs[:10]):
         y = start_y + i * row_h
-        if y > 6.5:
+        if y + row_h > CONTENT_BOTTOM:
             break
-        bg_color = _c("off_white") if i % 2 == 0 else _c("white")
-        _add_shape(slide, MSO_SHAPE.RECTANGLE, 0.6, y, 11.8, row_h, fill_color=bg_color)
-        _add_shape(slide, MSO_SHAPE.RECTANGLE, 0.6, y, 0.06, row_h, fill_color=_c("purple"))
-        _add_textbox(slide, 0.85, y + 0.07, key_w, row_h - 0.14, str(pair.get("key", "")), 12, _c("purple"), bold=True)
-        _add_textbox(slide, 0.85 + key_w + 0.3, y + 0.07, 8.0, row_h - 0.14, str(pair.get("value", "")), 12, _c("charcoal"))
+        bg = style.card_bg if i % 2 == 0 else "#FFFFFF"
+        _add_shape(slide, MSO_SHAPE.RECTANGLE,
+                   CONTENT_L, y, CONTENT_W, row_h, fill_color=bg)
+        _add_shape(slide, MSO_SHAPE.RECTANGLE,
+                   CONTENT_L, y, 0.06, row_h, fill_color=style.accent_color)
+        _add_textbox(slide, CONTENT_L + 0.2, y + 0.07, key_w, row_h - 0.14,
+                     str(pair.get("key", "")), SZ_BODY, style.accent_color,
+                     bold=True, font_name=style.heading_font)
+        _add_textbox(slide, CONTENT_L + key_w + 0.4, y + 0.07,
+                     CONTENT_W - key_w - 0.6, row_h - 0.14,
+                     str(pair.get("value", "")), SZ_BODY, style.body_color,
+                     font_name=style.body_font)
 
 
-# ============================================================
-# TIMELINE
-# ============================================================
+# ── TIMELINE ──────────────────────────────────────────────────
 
-def build_timeline_slide(prs: Presentation, title: str,
+def build_timeline_slide(prs: Presentation, style: SlideStyle, title: str,
                          phases: list[dict], slide_number: int = 0) -> None:
     slide = _add_slide(prs, "Content_Basic")
+    _apply_composition(slide, style)
+    _fill_ph(slide, 0, title, size=SZ_TITLE, color=style.title_color,
+             bold=True, font_name=style.heading_font)
+    _clear_body_ph(slide)
 
-    _fill_placeholder(slide, 0, title, size=24, color=_c("black"), bold=True)
-    body_ph = _get_ph(slide, 1)
-    if body_ph:
-        body_ph.text_frame.paragraphs[0].text = ""
+    cycle = [style.palette.primary, style.palette.accent1, style.palette.secondary,
+             style.palette.accent2, style.palette.accent3]
 
     num_phases = min(len(phases), 6)
-    bar_w = 11.5 / num_phases
-    bar_h = 0.7
-    bar_y = 2.4
+    bar_w = CONTENT_W / num_phases
+    bar_h = 0.60
+    bar_y = 2.30
 
-    _add_shape(slide, MSO_SHAPE.RECTANGLE, 0.6, bar_y + bar_h / 2 - 0.02, 11.5, 0.04, fill_color=_c("light_gray"))
+    _add_shape(slide, MSO_SHAPE.RECTANGLE,
+               CONTENT_L, bar_y + bar_h / 2 - 0.015,
+               CONTENT_W, 0.03, fill_color=style.border_color)
 
     for i, phase in enumerate(phases[:num_phases]):
-        x = 0.6 + i * bar_w
-        color = _c(ACCENT_COLORS[i % len(ACCENT_COLORS)])
+        x = CONTENT_L + i * bar_w
+        color = cycle[i % len(cycle)]
 
-        _add_shape(slide, MSO_SHAPE.ROUNDED_RECTANGLE, x + 0.05, bar_y, bar_w - 0.1, bar_h, fill_color=color)
-        _add_textbox(slide, x + 0.1, bar_y + 0.1, bar_w - 0.2, 0.5, phase.get("name", ""), 11, _c("white"), bold=True, alignment=PP_ALIGN.CENTER)
+        _add_shape(slide, MSO_SHAPE.ROUNDED_RECTANGLE,
+                   x + 0.05, bar_y, bar_w - 0.10, bar_h, fill_color=color)
+        _add_textbox(slide, x + 0.1, bar_y + 0.10, bar_w - 0.2, 0.40,
+                     phase.get("name", ""), 10, style.palette.text_light,
+                     bold=True, alignment=PP_ALIGN.CENTER, font_name=style.heading_font)
 
         duration = phase.get("duration", "")
         if duration:
-            _add_textbox(slide, x + 0.05, bar_y + bar_h + 0.15, bar_w - 0.1, 0.3, duration, 10, _c("purple"), bold=True, alignment=PP_ALIGN.CENTER)
+            _add_textbox(slide, x + 0.05, bar_y + bar_h + 0.10,
+                         bar_w - 0.1, 0.25,
+                         duration, SZ_SMALL, style.accent_color,
+                         bold=True, alignment=PP_ALIGN.CENTER, font_name=style.body_font)
 
         desc = phase.get("description", "")
         if desc:
-            card = _add_shape(slide, MSO_SHAPE.ROUNDED_RECTANGLE, x + 0.05, bar_y + bar_h + 0.5, bar_w - 0.1, 2.8, fill_color=_c("off_white"))
-            card.line.color.rgb = _c("light_gray")
-            card.line.width = Pt(0.5)
-            _add_shape(slide, MSO_SHAPE.RECTANGLE, x + 0.05, bar_y + bar_h + 0.5, bar_w - 0.1, 0.05, fill_color=color)
-            _add_textbox(slide, x + 0.15, bar_y + bar_h + 0.65, bar_w - 0.3, 2.5, desc, 10, _c("charcoal"))
+            desc_top = bar_y + bar_h + 0.40
+            desc_h = min(2.8, CONTENT_BOTTOM - desc_top - 0.1)
+            _add_card(slide, x + 0.05, desc_top, bar_w - 0.1, desc_h,
+                      style, accent_color=color)
+            _add_textbox(slide, x + 0.15, desc_top + 0.12, bar_w - 0.3, desc_h - 0.2,
+                         desc, SZ_SMALL, style.body_color, font_name=style.body_font)
 
 
-# ============================================================
-# TEAM STRUCTURE
-# ============================================================
+# ── TEAM ──────────────────────────────────────────────────────
 
-def build_team_slide(prs: Presentation, title: str,
+def build_team_slide(prs: Presentation, style: SlideStyle, title: str,
                      team_members: list[dict], slide_number: int = 0) -> None:
     slide = _add_slide(prs, "Content_Basic")
+    _apply_composition(slide, style)
+    _fill_ph(slide, 0, title, size=SZ_TITLE, color=style.title_color,
+             bold=True, font_name=style.heading_font)
+    _clear_body_ph(slide)
 
-    _fill_placeholder(slide, 0, title, size=24, color=_c("black"), bold=True)
-    body_ph = _get_ph(slide, 1)
-    if body_ph:
-        body_ph.text_frame.paragraphs[0].text = ""
+    cycle = [style.palette.primary, style.palette.accent1, style.palette.secondary,
+             style.palette.accent2, style.palette.accent3]
 
     num_members = min(len(team_members), 8)
     cols = min(num_members, 4)
-    card_w = (11.8 - (cols - 1) * 0.25) / cols
-    card_h = 2.2
+    gap_x, gap_y = 0.20, 0.15
+    card_w = (CONTENT_W - (cols - 1) * gap_x) / cols
+    rows = (num_members + cols - 1) // cols
+    card_h = min(2.0, (CONTENT_H - (rows - 1) * gap_y) / rows)
 
-    for i, member in enumerate(team_members[:8]):
-        col = i % cols
-        row = i // cols
-        x = 0.6 + col * (card_w + 0.25)
-        y = 2.2 + row * (card_h + 0.2)
-        color = _c(ACCENT_COLORS[i % len(ACCENT_COLORS)])
+    for i, member in enumerate(team_members[:num_members]):
+        col, row = i % cols, i // cols
+        x = CONTENT_L + col * (card_w + gap_x)
+        y = CONTENT_TOP + 0.1 + row * (card_h + gap_y)
+        color = cycle[i % len(cycle)]
 
-        card = _add_shape(slide, MSO_SHAPE.ROUNDED_RECTANGLE, x, y, card_w, card_h, fill_color=_c("white"))
-        card.line.color.rgb = _c("light_gray")
-        card.line.width = Pt(0.75)
-        _add_shape(slide, MSO_SHAPE.RECTANGLE, x, y, card_w, 0.06, fill_color=color)
+        _add_card(slide, x, y, card_w, card_h, style, accent_color=color)
 
-        avatar_size = 0.55
-        _add_shape(slide, MSO_SHAPE.OVAL, x + (card_w - avatar_size) / 2, y + 0.2, avatar_size, avatar_size, fill_color=color)
+        avatar_size = 0.48
+        _add_shape(slide, MSO_SHAPE.OVAL,
+                   x + (card_w - avatar_size) / 2, y + 0.18,
+                   avatar_size, avatar_size, fill_color=color)
 
         name = member.get("name", "TBD")
         initials = "".join(w[0].upper() for w in name.split()[:2] if w)
-        _add_textbox(slide, x + (card_w - avatar_size) / 2, y + 0.28, avatar_size, avatar_size - 0.15, initials, 14, _c("white"), bold=True, alignment=PP_ALIGN.CENTER)
+        _add_textbox(slide, x + (card_w - avatar_size) / 2, y + 0.24,
+                     avatar_size, avatar_size - 0.12,
+                     initials, 13, style.palette.text_light, bold=True,
+                     alignment=PP_ALIGN.CENTER, font_name=style.heading_font)
 
-        _add_textbox(slide, x + 0.1, y + 0.9, card_w - 0.2, 0.35, name, 11, _c("black"), bold=True, alignment=PP_ALIGN.CENTER)
-        _add_textbox(slide, x + 0.1, y + 1.25, card_w - 0.2, 0.3, member.get("role", ""), 10, _c("purple"), alignment=PP_ALIGN.CENTER)
+        _add_textbox(slide, x + 0.1, y + 0.78, card_w - 0.2, 0.30,
+                     name, 11, style.title_color, bold=True,
+                     alignment=PP_ALIGN.CENTER, font_name=style.heading_font)
+        _add_textbox(slide, x + 0.1, y + 1.08, card_w - 0.2, 0.25,
+                     member.get("role", ""), SZ_SMALL, style.accent_color,
+                     alignment=PP_ALIGN.CENTER, font_name=style.body_font)
 
         expertise = member.get("expertise", "")
         if expertise:
-            _add_textbox(slide, x + 0.1, y + 1.55, card_w - 0.2, 0.55, expertise, 9, _c("dark_gray"), alignment=PP_ALIGN.CENTER)
+            _add_textbox(slide, x + 0.1, y + 1.33, card_w - 0.2, card_h - 1.50,
+                         expertise, SZ_TINY, style.body_color,
+                         alignment=PP_ALIGN.CENTER, font_name=style.body_font)
 
 
-# ============================================================
-# COMMERCIALS TABLE
-# ============================================================
+# ── COMMERCIALS TABLE ─────────────────────────────────────────
 
-def build_commercials_slide(prs: Presentation, title: str,
+def build_commercials_slide(prs: Presentation, style: SlideStyle, title: str,
                             rows: list[dict] = None, total: str = "",
                             assumptions: list[str] = None,
                             slide_number: int = 0) -> None:
     slide = _add_slide(prs, "Content_Basic")
-
-    _fill_placeholder(slide, 0, title, size=24, color=_c("black"), bold=True)
-    body_ph = _get_ph(slide, 1)
-    if body_ph:
-        body_ph.text_frame.paragraphs[0].text = ""
+    _apply_composition(slide, style)
+    _fill_ph(slide, 0, title, size=SZ_TITLE, color=style.title_color,
+             bold=True, font_name=style.heading_font)
+    _clear_body_ph(slide)
 
     if rows:
         headers = ["Role / Item", "Hours", "Rate ($/hr)", "Cost ($)"]
         num_rows = len(rows) + 2
-        table_shape = slide.shapes.add_table(num_rows, 4, Inches(0.6), Inches(2.2), Inches(8.0), Inches(0.45 * num_rows))
+        table_w = 8.0
+        table_shape = slide.shapes.add_table(
+            num_rows, 4,
+            Inches(CONTENT_L), Inches(CONTENT_TOP + 0.1),
+            Inches(table_w), Inches(0.42 * num_rows)
+        )
         table = table_shape.table
         table.columns[0].width = Inches(3.5)
         table.columns[1].width = Inches(1.5)
@@ -778,30 +959,31 @@ def build_commercials_slide(prs: Presentation, title: str,
             cell = table.cell(0, i)
             cell.text = h
             cell.fill.solid()
-            cell.fill.fore_color.rgb = _c("purple")
+            cell.fill.fore_color.rgb = _rgb(style.accent_color)
             for p in cell.text_frame.paragraphs:
                 p.font.size = Pt(11)
-                p.font.color.rgb = _c("white")
+                p.font.color.rgb = _rgb(style.palette.text_light)
                 p.font.bold = True
-                p.font.name = "Arial"
+                p.font.name = style.heading_font
 
         for r_idx, row in enumerate(rows):
             for c_idx, key in enumerate(["item", "hours", "rate", "cost"]):
                 cell = table.cell(r_idx + 1, c_idx)
                 cell.text = str(row.get(key, ""))
-                bg = _c("off_white") if r_idx % 2 == 0 else _c("white")
+                bg = style.card_bg if r_idx % 2 == 0 else "#FFFFFF"
                 cell.fill.solid()
-                cell.fill.fore_color.rgb = bg
+                cell.fill.fore_color.rgb = _rgb(bg)
                 for p in cell.text_frame.paragraphs:
-                    p.font.size = Pt(10)
-                    p.font.color.rgb = _c("charcoal")
-                    p.font.name = "Arial"
+                    p.font.size = Pt(SZ_SMALL)
+                    p.font.color.rgb = _rgb(style.body_color)
+                    p.font.name = style.body_font
 
         total_row = num_rows - 1
+        light_accent = _lighten_color(style.accent_color, 0.85)
         for c_idx in range(4):
             cell = table.cell(total_row, c_idx)
             cell.fill.solid()
-            cell.fill.fore_color.rgb = _c("purple_bg")
+            cell.fill.fore_color.rgb = _rgb(light_accent)
             if c_idx == 0:
                 cell.text = "TOTAL"
             elif c_idx == 3:
@@ -809,53 +991,63 @@ def build_commercials_slide(prs: Presentation, title: str,
             for p in cell.text_frame.paragraphs:
                 p.font.size = Pt(11)
                 p.font.bold = True
-                p.font.color.rgb = _c("purple")
-                p.font.name = "Arial"
+                p.font.color.rgb = _rgb(style.accent_color)
+                p.font.name = style.heading_font
 
     if assumptions:
-        _add_textbox(slide, 9.0, 2.2, 3.5, 0.4, "Assumptions", 13, _c("purple"), bold=True)
+        assume_x = CONTENT_L + 8.5
+        _add_textbox(slide, assume_x, CONTENT_TOP + 0.1, 3.5, 0.35,
+                     "Assumptions", 13, style.accent_color, bold=True,
+                     font_name=style.heading_font)
         for i, assumption in enumerate(assumptions[:6]):
-            y = 2.7 + i * 0.5
-            _add_shape(slide, MSO_SHAPE.OVAL, 9.0, y + 0.05, 0.12, 0.12, fill_color=_c("purple"))
-            _add_textbox(slide, 9.25, y, 3.3, 0.45, assumption, 9, _c("dark_gray"))
+            y = CONTENT_TOP + 0.55 + i * 0.48
+            _add_shape(slide, MSO_SHAPE.OVAL,
+                       assume_x, y + 0.05, 0.10, 0.10, fill_color=style.accent_color)
+            _add_textbox(slide, assume_x + 0.20, y, 3.2, 0.42,
+                         assumption, SZ_TINY, style.body_color, font_name=style.body_font)
 
 
-# ============================================================
-# CLOSING SLIDE — End-cover_dark
-# ============================================================
+def _lighten_color(hex_color: str, factor: float) -> str:
+    h = hex_color.lstrip("#")
+    r, g, b = int(h[0:2], 16), int(h[2:4], 16), int(h[4:6], 16)
+    r = min(255, int(r + (255 - r) * factor))
+    g = min(255, int(g + (255 - g) * factor))
+    b = min(255, int(b + (255 - b) * factor))
+    return f"#{r:02X}{g:02X}{b:02X}"
 
-def build_closing_slide(prs: Presentation, title: str = "Thank You",
+
+# ── CLOSING ───────────────────────────────────────────────────
+
+def build_closing_slide(prs: Presentation, style: SlideStyle,
+                        title: str = "Thank You",
                         contact_name: str = "", contact_email: str = "",
                         contact_phone: str = "", slide_number: int = 0,
                         image_path: str = None) -> None:
-    slide = _add_slide(prs, "End-cover_dark", image_path=image_path)
+    slide = _add_slide(prs, "Content_Basic", image_path=image_path)
+    _apply_composition(slide, style)
+    _clear_body_ph(slide)
 
-    _fill_placeholder(slide, 0, title, size=36, color=_c("white"), bold=True)
+    _add_textbox(slide, CONTENT_L, 2.20, CONTENT_W, 1.80,
+                 title, SZ_HERO, style.title_color,
+                 bold=True, alignment=PP_ALIGN.CENTER, font_name=style.heading_font)
 
-    contact_parts = []
-    if contact_name:
-        contact_parts.append(contact_name)
-    if contact_email:
-        contact_parts.append(contact_email)
-    if contact_phone:
-        contact_parts.append(contact_phone)
+    contact_parts = [p for p in [contact_name, contact_email, contact_phone] if p]
     if contact_parts:
-        _fill_placeholder(slide, 1, "\n".join(contact_parts), size=14, color=_c("white"))
+        _add_textbox(slide, CONTENT_L, 4.20, CONTENT_W, 1.20,
+                     "\n".join(contact_parts), SZ_SUBTITLE, style.body_color,
+                     alignment=PP_ALIGN.CENTER, font_name=style.body_font)
 
 
-# ============================================================
-# ARCHITECTURE DIAGRAM
-# ============================================================
+# ── ARCHITECTURE DIAGRAM ─────────────────────────────────────
 
-def build_architecture_slide(prs: Presentation, title: str,
+def build_architecture_slide(prs: Presentation, style: SlideStyle, title: str,
                              layers: list[dict] = None,
                              slide_number: int = 0) -> None:
     slide = _add_slide(prs, "Content_Basic")
-
-    _fill_placeholder(slide, 0, title, size=24, color=_c("black"), bold=True)
-    body_ph = _get_ph(slide, 1)
-    if body_ph:
-        body_ph.text_frame.paragraphs[0].text = ""
+    _apply_composition(slide, style)
+    _fill_ph(slide, 0, title, size=SZ_TITLE, color=style.title_color,
+             bold=True, font_name=style.heading_font)
+    _clear_body_ph(slide)
 
     if not layers:
         layers = [
@@ -863,206 +1055,216 @@ def build_architecture_slide(prs: Presentation, title: str,
             {"name": "Ingestion", "components": ["Data Ingestion"], "color": "teal"},
             {"name": "Processing", "components": ["Transformation"], "color": "purple"},
             {"name": "Storage", "components": ["Data Store"], "color": "green"},
-            {"name": "Consumption", "components": ["Reporting & Analytics"], "color": "orange"},
+            {"name": "Consumption", "components": ["Analytics"], "color": "orange"},
         ]
 
+    color_map = {
+        "blue": style.palette.secondary,
+        "teal": style.palette.accent1,
+        "purple": style.palette.primary,
+        "green": style.palette.accent3,
+        "orange": style.palette.accent2,
+        "light_blue": style.palette.accent1,
+        "red": "#C00000",
+        "gold": "#F2C811",
+    }
+
     num_layers = min(len(layers), 7)
-    diagram_x = 0.8
-    diagram_w = 11.5
-    layer_h = (4.5 - (num_layers - 1) * 0.15) / num_layers
-    layer_h = min(layer_h, 1.0)
-    start_y = 2.2
-    arrow_gap = 0.15
+    arrow_gap = 0.12
+    available_h = CONTENT_BOTTOM - CONTENT_TOP - 0.2
+    layer_h = (available_h - (num_layers - 1) * arrow_gap) / num_layers
+    layer_h = min(layer_h, 0.85)
+    label_w = 2.2
+    diagram_w = CONTENT_W
 
     for i, layer in enumerate(layers[:num_layers]):
-        y = start_y + i * (layer_h + arrow_gap)
-        color_name = layer.get("color", ACCENT_COLORS[i % len(ACCENT_COLORS)])
-        color = _c(color_name)
+        y = CONTENT_TOP + 0.1 + i * (layer_h + arrow_gap)
+        color_name = layer.get("color", list(color_map.keys())[i % len(color_map)])
+        color = color_map.get(color_name, style.palette.primary)
 
-        _add_shape(slide, MSO_SHAPE.ROUNDED_RECTANGLE, diagram_x, y, diagram_w, layer_h, fill_color=_c("off_white"))
+        _add_shape(slide, MSO_SHAPE.ROUNDED_RECTANGLE,
+                   CONTENT_L, y, diagram_w, layer_h,
+                   fill_color=style.card_bg,
+                   line_color=style.border_color, line_width=0.5)
 
-        label_w = 2.5
-        _add_shape(slide, MSO_SHAPE.ROUNDED_RECTANGLE, diagram_x, y, label_w, layer_h, fill_color=color)
-        _add_textbox(slide, diagram_x + 0.15, y + (layer_h - 0.35) / 2, label_w - 0.3, 0.35, layer.get("name", ""), 11, _c("white"), bold=True)
+        _add_shape(slide, MSO_SHAPE.ROUNDED_RECTANGLE,
+                   CONTENT_L, y, label_w, layer_h, fill_color=color)
+        _add_textbox(slide, CONTENT_L + 0.12, y + (layer_h - 0.30) / 2,
+                     label_w - 0.24, 0.30,
+                     layer.get("name", ""), 11, style.palette.text_light,
+                     bold=True, font_name=style.heading_font)
 
         components = layer.get("components", [])
         if components:
             num_comp = min(len(components), 5)
-            comp_area_x = diagram_x + label_w + 0.15
-            comp_area_w = diagram_w - label_w - 0.3
-            comp_w = (comp_area_w - (num_comp - 1) * 0.15) / num_comp
-            comp_h = layer_h - 0.2
+            comp_area_x = CONTENT_L + label_w + 0.12
+            comp_area_w = diagram_w - label_w - 0.24
+            comp_gap = 0.10
+            comp_w = (comp_area_w - (num_comp - 1) * comp_gap) / num_comp
+            comp_h = layer_h - 0.16
 
             for j, comp in enumerate(components[:num_comp]):
-                cx = comp_area_x + j * (comp_w + 0.15)
-                cy = y + 0.1
-                comp_shape = _add_shape(slide, MSO_SHAPE.ROUNDED_RECTANGLE, cx, cy, comp_w, comp_h, fill_color=_c("white"))
-                comp_shape.line.color.rgb = color
-                comp_shape.line.width = Pt(1)
-                _add_textbox(slide, cx + 0.05, cy + (comp_h - 0.3) / 2, comp_w - 0.1, 0.3, comp, 9, _c("charcoal"), alignment=PP_ALIGN.CENTER)
+                cx = comp_area_x + j * (comp_w + comp_gap)
+                cy = y + 0.08
+                _add_shape(slide, MSO_SHAPE.ROUNDED_RECTANGLE,
+                           cx, cy, comp_w, comp_h,
+                           fill_color="#FFFFFF",
+                           line_color=color, line_width=1)
+                _add_textbox(slide, cx + 0.05, cy + (comp_h - 0.25) / 2,
+                             comp_w - 0.1, 0.25,
+                             comp, SZ_TINY, style.body_color,
+                             alignment=PP_ALIGN.CENTER, font_name=style.body_font)
 
         if i < num_layers - 1:
-            arrow_y = y + layer_h + 0.02
-            arrow_x = diagram_x + diagram_w / 2 - 0.15
-            _add_shape(slide, MSO_SHAPE.DOWN_ARROW, arrow_x, arrow_y, 0.3, arrow_gap - 0.04, fill_color=_c("purple_muted"))
+            arrow_y = y + layer_h + 0.01
+            arrow_x = CONTENT_L + diagram_w / 2 - 0.12
+            _add_shape(slide, MSO_SHAPE.DOWN_ARROW,
+                       arrow_x, arrow_y, 0.24, arrow_gap - 0.02,
+                       fill_color=style.palette.accent1)
 
 
-# ============================================================
-# IMAGE PLACEHOLDER
-# ============================================================
+# ── TECHNOLOGY CARDS ──────────────────────────────────────────
 
-def build_image_placeholder_slide(prs: Presentation, title: str,
-                                  placeholder_text: str = "Architecture Diagram",
-                                  caption: str = "", slide_number: int = 0) -> None:
-    slide = _add_slide(prs, "Content_Basic")
-
-    _fill_placeholder(slide, 0, title, size=24, color=_c("black"), bold=True)
-    body_ph = _get_ph(slide, 1)
-    if body_ph:
-        body_ph.text_frame.paragraphs[0].text = ""
-
-    box = _add_shape(slide, MSO_SHAPE.ROUNDED_RECTANGLE, 0.8, 2.2, 11.2, 4.0, fill_color=_c("off_white"))
-    box.line.color.rgb = _c("light_gray")
-    box.line.width = Pt(1.5)
-
-    _add_textbox(slide, 3.0, 3.5, 7.0, 0.6, f"[ {placeholder_text} ]", 18, _c("mid_gray"), alignment=PP_ALIGN.CENTER)
-    _add_textbox(slide, 3.0, 4.1, 7.0, 0.4, "Insert diagram or image here", 11, _c("light_gray"), alignment=PP_ALIGN.CENTER)
-
-    if caption:
-        _add_textbox(slide, 0.8, 6.3, 11.2, 0.4, caption, 10, _c("dark_gray"), alignment=PP_ALIGN.CENTER)
-
-
-# ============================================================
-# TECHNOLOGY CARDS
-# ============================================================
-
-def build_technology_slide(prs: Presentation, title: str,
+def build_technology_slide(prs: Presentation, style: SlideStyle, title: str,
                            technologies: list[dict], slide_number: int = 0) -> None:
     slide = _add_slide(prs, "Content_Basic")
+    _apply_composition(slide, style)
+    _fill_ph(slide, 0, title, size=SZ_TITLE, color=style.title_color,
+             bold=True, font_name=style.heading_font)
+    _clear_body_ph(slide)
 
-    _fill_placeholder(slide, 0, title, size=24, color=_c("black"), bold=True)
-    body_ph = _get_ph(slide, 1)
-    if body_ph:
-        body_ph.text_frame.paragraphs[0].text = ""
+    cycle = [style.palette.primary, style.palette.accent1, style.palette.secondary,
+             style.palette.accent2, style.palette.accent3]
 
     num_items = min(len(technologies), 6)
     cols = min(num_items, 3)
-    card_w = (11.8 - (cols - 1) * 0.25) / cols
-    card_h = 2.2
+    rows = (num_items + cols - 1) // cols
+    gap_x, gap_y = 0.20, 0.15
+    card_w = (CONTENT_W - (cols - 1) * gap_x) / cols
+    card_h = min(2.0, (CONTENT_H - (rows - 1) * gap_y) / rows)
 
-    for i, tech in enumerate(technologies[:6]):
-        col = i % cols
-        row = i // cols
-        x = 0.6 + col * (card_w + 0.25)
-        y = 2.2 + row * (card_h + 0.2)
-        color = _c(ACCENT_COLORS[i % len(ACCENT_COLORS)])
+    for i, tech in enumerate(technologies[:num_items]):
+        col, row = i % cols, i // cols
+        x = CONTENT_L + col * (card_w + gap_x)
+        y = CONTENT_TOP + 0.1 + row * (card_h + gap_y)
+        color = cycle[i % len(cycle)]
 
-        card = _add_shape(slide, MSO_SHAPE.ROUNDED_RECTANGLE, x, y, card_w, card_h, fill_color=_c("white"))
-        card.line.color.rgb = _c("light_gray")
-        card.line.width = Pt(0.75)
-        _add_shape(slide, MSO_SHAPE.RECTANGLE, x, y, 0.08, card_h, fill_color=color)
+        _add_card(slide, x, y, card_w, card_h, style, accent_color=color)
+
+        _add_shape(slide, MSO_SHAPE.RECTANGLE,
+                   x, y, 0.07, card_h, fill_color=color)
 
         category = tech.get("category", "Technology")
-        _add_shape(slide, MSO_SHAPE.ROUNDED_RECTANGLE, x + 0.25, y + 0.15, 1.8, 0.3, fill_color=color)
-        _add_textbox(slide, x + 0.3, y + 0.17, 1.7, 0.25, category.upper(), 8, _c("white"), bold=True, alignment=PP_ALIGN.CENTER)
+        _add_shape(slide, MSO_SHAPE.ROUNDED_RECTANGLE,
+                   x + 0.22, y + 0.12, 1.6, 0.26, fill_color=color)
+        _add_textbox(slide, x + 0.27, y + 0.13, 1.5, 0.23,
+                     category.upper(), 8, style.palette.text_light, bold=True,
+                     alignment=PP_ALIGN.CENTER, font_name=style.heading_font)
 
-        _add_textbox(slide, x + 0.25, y + 0.6, card_w - 0.5, 0.4, tech.get("name", ""), 14, _c("black"), bold=True)
+        _add_textbox(slide, x + 0.22, y + 0.50, card_w - 0.40, 0.35,
+                     tech.get("name", ""), SZ_SUBTITLE, style.title_color,
+                     bold=True, font_name=style.heading_font)
 
         desc = tech.get("description", "")
         if desc:
-            _add_textbox(slide, x + 0.25, y + 1.05, card_w - 0.5, 1.0, desc, 10, _c("dark_gray"))
+            _add_textbox(slide, x + 0.22, y + 0.90, card_w - 0.40, card_h - 1.10,
+                         desc, SZ_SMALL, style.body_color, font_name=style.body_font)
 
 
-# ============================================================
-# CHALLENGES & SOLUTIONS
-# ============================================================
+# ── CHALLENGES & SOLUTIONS ───────────────────────────────────
 
-def build_challenges_slide(prs: Presentation, title: str,
+def build_challenges_slide(prs: Presentation, style: SlideStyle, title: str,
                            challenges: list[dict], slide_number: int = 0) -> None:
     slide = _add_slide(prs, "Content_Basic")
+    _apply_composition(slide, style)
+    _fill_ph(slide, 0, title, size=SZ_TITLE, color=style.title_color,
+             bold=True, font_name=style.heading_font)
+    _clear_body_ph(slide)
 
-    _fill_placeholder(slide, 0, title, size=24, color=_c("black"), bold=True)
-    body_ph = _get_ph(slide, 1)
-    if body_ph:
-        body_ph.text_frame.paragraphs[0].text = ""
-
-    col_headers = [("Challenge", "red"), ("Impact", "orange"), ("Solution", "green")]
-    col_w = 3.8
-    for j, (header, hcolor) in enumerate(col_headers):
-        hx = 0.6 + j * (col_w + 0.15)
-        _add_shape(slide, MSO_SHAPE.ROUNDED_RECTANGLE, hx, 2.2, col_w, 0.45, fill_color=_c(hcolor))
-        _add_textbox(slide, hx + 0.1, 2.23, col_w - 0.2, 0.35, header, 12, _c("white"), bold=True, alignment=PP_ALIGN.CENTER)
-
-    for i, ch in enumerate(challenges[:5]):
-        y = 2.85 + i * 0.85
-        if y > 6.3:
-            break
-        for j, (key, cname) in enumerate([("challenge", "red"), ("impact", "orange"), ("solution", "green")]):
-            cx = 0.6 + j * (col_w + 0.15)
-            color = _c(cname)
-            card = _add_shape(slide, MSO_SHAPE.ROUNDED_RECTANGLE, cx, y, col_w, 0.7, fill_color=_c("off_white"))
-            card.line.color.rgb = _c("light_gray")
-            card.line.width = Pt(0.5)
-            _add_shape(slide, MSO_SHAPE.RECTANGLE, cx, y, 0.06, 0.7, fill_color=color)
-            _add_textbox(slide, cx + 0.2, y + 0.08, col_w - 0.35, 0.55, ch.get(key, ""), 10, _c("charcoal"))
-
-
-# ============================================================
-# XEBIA GLOBAL PRESENCE — Premium world map slide
-# ============================================================
-
-def build_global_presence_slide(prs: Presentation, slide_number: int = 0) -> None:
-    slide = _add_slide(prs, "Content_Basic")
-
-    _fill_placeholder(slide, 0, "Global Presence", size=24, color=_c("black"), bold=True)
-    body_ph = _get_ph(slide, 1)
-    if body_ph:
-        body_ph.text_frame.paragraphs[0].text = ""
-
-    theme = get_active_theme()
-    accent = theme.accent_palette[0] if theme else "#6C1D5F"
-    add_decorative_element(slide, "world_map", accent)
-
-    _add_textbox(slide, 0.8, 1.7, 11.5, 0.5,
-                 "5,000+ experts across 16 countries delivering digital transformation",
-                 13, _c("dark_gray"), alignment=PP_ALIGN.CENTER)
-
-    stats = [
-        ("5,000+", "Experts"),
-        ("16", "Countries"),
-        ("25+", "Years"),
-        ("1,000+", "Clients"),
+    col_headers = [
+        ("Challenge", "#C00000"),
+        ("Impact", style.palette.accent2),
+        ("Solution", style.palette.accent3),
     ]
-    card_w = 2.2
-    start_x = 1.5
-    gap = 0.6
-    y = 5.5
+    col_w = (CONTENT_W - 0.20) / 3
+    header_y = CONTENT_TOP + 0.1
+
+    for j, (header, hcolor) in enumerate(col_headers):
+        hx = CONTENT_L + j * (col_w + 0.10)
+        _add_shape(slide, MSO_SHAPE.ROUNDED_RECTANGLE,
+                   hx, header_y, col_w, 0.40, fill_color=hcolor)
+        _add_textbox(slide, hx + 0.1, header_y + 0.03, col_w - 0.2, 0.32,
+                     header, 11, style.palette.text_light, bold=True,
+                     alignment=PP_ALIGN.CENTER, font_name=style.heading_font)
+
+    row_h = 0.75
+    for i, ch in enumerate(challenges[:5]):
+        y = header_y + 0.55 + i * (row_h + 0.08)
+        if y + row_h > CONTENT_BOTTOM:
+            break
+        keys_colors = [
+            ("challenge", "#C00000"),
+            ("impact", style.palette.accent2),
+            ("solution", style.palette.accent3),
+        ]
+        for j, (key, ccolor) in enumerate(keys_colors):
+            cx = CONTENT_L + j * (col_w + 0.10)
+            _add_card(slide, cx, y, col_w, row_h, style)
+            _add_shape(slide, MSO_SHAPE.RECTANGLE,
+                       cx, y, 0.05, row_h, fill_color=ccolor)
+            _add_textbox(slide, cx + 0.15, y + 0.06, col_w - 0.25, row_h - 0.12,
+                         ch.get(key, ""), SZ_SMALL, style.body_color,
+                         font_name=style.body_font)
+
+
+# ── GLOBAL PRESENCE ───────────────────────────────────────────
+
+def build_global_presence_slide(prs: Presentation, style: SlideStyle,
+                                slide_number: int = 0) -> None:
+    slide = _add_slide(prs, "Content_Basic")
+    _apply_composition(slide, style)
+    _fill_ph(slide, 0, "Global Presence", size=SZ_TITLE, color=style.title_color,
+             bold=True, font_name=style.heading_font)
+    _clear_body_ph(slide)
+
+    add_world_map(slide, style.palette.primary)
+
+    _add_textbox(slide, CONTENT_L, CONTENT_TOP, CONTENT_W, 0.40,
+                 "5,000+ experts across 16 countries delivering digital transformation",
+                 13, style.body_color, alignment=PP_ALIGN.CENTER,
+                 font_name=style.body_font)
+
+    cycle = [style.palette.primary, style.palette.accent1,
+             style.palette.secondary, style.palette.accent2]
+    stats = [("5,000+", "Experts"), ("16", "Countries"),
+             ("25+", "Years"), ("1,000+", "Clients")]
+    card_w = 2.1
+    gap = 0.50
+    total_w = len(stats) * card_w + (len(stats) - 1) * gap
+    start_x = CONTENT_L + (CONTENT_W - total_w) / 2
+    y = 5.60
+
     for i, (value, label) in enumerate(stats):
         x = start_x + i * (card_w + gap)
-        color = _rgb(theme.accent_palette[i % len(theme.accent_palette)] if theme else "#6C1D5F")
+        color = cycle[i % len(cycle)]
+        _add_card(slide, x, y, card_w, 1.15, style, accent_color=color)
+        _add_textbox(slide, x + 0.1, y + 0.12, card_w - 0.2, 0.50,
+                     value, 26, color, bold=True, alignment=PP_ALIGN.CENTER,
+                     font_name=style.heading_font)
+        _add_textbox(slide, x + 0.1, y + 0.65, card_w - 0.2, 0.35,
+                     label, SZ_BODY, style.body_color, alignment=PP_ALIGN.CENTER,
+                     font_name=style.body_font)
 
-        card = _add_shape(slide, MSO_SHAPE.ROUNDED_RECTANGLE, x, y, card_w, 1.3, fill_color=_c("white"))
-        card.line.color.rgb = _c("light_gray")
-        card.line.width = Pt(0.75)
-        _add_shape(slide, MSO_SHAPE.RECTANGLE, x, y, card_w, 0.06, fill_color=color)
 
-        _add_textbox(slide, x + 0.1, y + 0.15, card_w - 0.2, 0.6, value, 28, color, bold=True, alignment=PP_ALIGN.CENTER)
-        _add_textbox(slide, x + 0.1, y + 0.75, card_w - 0.2, 0.4, label, 12, _c("dark_gray"), alignment=PP_ALIGN.CENTER)
+# ── XEBIA CAPABILITIES ───────────────────────────────────────
 
-
-# ============================================================
-# XEBIA CAPABILITIES — About Xebia premium showcase
-# ============================================================
-
-def build_xebia_capabilities_slide(prs: Presentation, slide_number: int = 0) -> None:
+def build_xebia_capabilities_slide(prs: Presentation, style: SlideStyle,
+                                   slide_number: int = 0) -> None:
     slide = _add_slide(prs, "Content_Basic")
-
-    _fill_placeholder(slide, 0, "Why Xebia", size=24, color=_c("black"), bold=True)
-    body_ph = _get_ph(slide, 1)
-    if body_ph:
-        body_ph.text_frame.paragraphs[0].text = ""
-
-    theme = get_active_theme()
+    _apply_composition(slide, style)
+    _fill_ph(slide, 0, "Why Xebia", size=SZ_TITLE, color=style.title_color,
+             bold=True, font_name=style.heading_font)
+    _clear_body_ph(slide)
 
     capabilities = [
         ("Data & AI", "End-to-end data engineering, ML/AI, and analytics solutions"),
@@ -1073,81 +1275,107 @@ def build_xebia_capabilities_slide(prs: Presentation, slide_number: int = 0) -> 
         ("Academy", "Certified training programs for upskilling teams"),
     ]
 
+    cycle = [style.palette.primary, style.palette.accent1, style.palette.secondary,
+             style.palette.accent2, style.palette.accent3, style.palette.accent1]
+
     cols = 3
-    card_w = (11.8 - (cols - 1) * 0.3) / cols
+    gap_x, gap_y = 0.25, 0.20
+    card_w = (CONTENT_W - (cols - 1) * gap_x) / cols
     card_h = 2.0
 
     for i, (cap_name, cap_desc) in enumerate(capabilities):
-        col = i % cols
-        row = i // cols
-        x = 0.6 + col * (card_w + 0.3)
-        y = 2.2 + row * (card_h + 0.3)
-        color = _rgb(theme.accent_palette[i % len(theme.accent_palette)] if theme else "#6C1D5F")
+        col, row = i % cols, i // cols
+        x = CONTENT_L + col * (card_w + gap_x)
+        y = CONTENT_TOP + 0.1 + row * (card_h + gap_y)
+        color = cycle[i % len(cycle)]
 
-        card = _add_shape(slide, MSO_SHAPE.ROUNDED_RECTANGLE, x, y, card_w, card_h, fill_color=_c("white"))
-        card.line.color.rgb = _c("light_gray")
-        card.line.width = Pt(0.75)
-        _add_shape(slide, MSO_SHAPE.RECTANGLE, x, y, card_w, 0.07, fill_color=color)
+        _add_card(slide, x, y, card_w, card_h, style, accent_color=color)
 
-        icon_size = 0.45
-        _add_shape(slide, MSO_SHAPE.OVAL, x + 0.2, y + 0.25, icon_size, icon_size, fill_color=color)
-        initials = cap_name[0]
-        _add_textbox(slide, x + 0.2, y + 0.3, icon_size, icon_size - 0.1, initials, 16, _c("white"), bold=True, alignment=PP_ALIGN.CENTER)
+        icon_size = 0.42
+        _add_shape(slide, MSO_SHAPE.OVAL, x + 0.18, y + 0.20,
+                   icon_size, icon_size, fill_color=color)
+        _add_textbox(slide, x + 0.18, y + 0.25, icon_size, icon_size - 0.08,
+                     cap_name[0], 14, style.palette.text_light, bold=True,
+                     alignment=PP_ALIGN.CENTER, font_name=style.heading_font)
 
-        _add_textbox(slide, x + 0.8, y + 0.25, card_w - 1.0, 0.4, cap_name, 13, _c("black"), bold=True)
-        _add_textbox(slide, x + 0.2, y + 0.85, card_w - 0.4, 1.0, cap_desc, 10, _c("dark_gray"))
-
-    if theme:
-        add_decorative_element(slide, theme.decorative_style, theme.accent_palette[0], "bottom")
+        _add_textbox(slide, x + 0.72, y + 0.22, card_w - 0.90, 0.35,
+                     cap_name, 13, style.title_color, bold=True,
+                     font_name=style.heading_font)
+        _add_textbox(slide, x + 0.18, y + 0.78, card_w - 0.36, 1.0,
+                     cap_desc, SZ_SMALL, style.body_color, font_name=style.body_font)
 
 
-# ============================================================
-# DECORATED CONTENT SLIDE — Content with theme decorations
-# ============================================================
+# ── IMAGE PLACEHOLDER ─────────────────────────────────────────
 
-def build_decorated_content_slide(prs: Presentation, title: str,
-                                   body_text: str = "", bullets: list[str] = None,
-                                   slide_number: int = 0) -> None:
-    """Content slide with dynamic decorative elements from the theme."""
+def build_image_placeholder_slide(prs: Presentation, style: SlideStyle, title: str,
+                                  placeholder_text: str = "Architecture Diagram",
+                                  caption: str = "", slide_number: int = 0) -> None:
     slide = _add_slide(prs, "Content_Basic")
+    _apply_composition(slide, style)
+    _fill_ph(slide, 0, title, size=SZ_TITLE, color=style.title_color,
+             bold=True, font_name=style.heading_font)
+    _clear_body_ph(slide)
 
-    _fill_placeholder(slide, 0, title, size=24, color=_c("black"), bold=True)
-
-    body_ph = _get_ph(slide, 1)
-    if body_ph:
-        tf = body_ph.text_frame
-        tf.word_wrap = True
-
-        first_para = True
-        if body_text:
-            p = tf.paragraphs[0]
-            p.text = body_text
-            p.font.size = Pt(12)
-            p.font.color.rgb = _c("charcoal")
-            p.font.name = "Arial"
-            first_para = False
-
-        if bullets:
-            for bullet in bullets:
-                if first_para:
-                    p = tf.paragraphs[0]
-                    first_para = False
-                else:
-                    p = tf.add_paragraph()
-                p.text = f"•  {bullet}"
-                p.font.size = Pt(11)
-                p.font.color.rgb = _c("charcoal")
-                p.font.name = "Arial"
-                p.space_before = Pt(4)
-
-    theme = get_active_theme()
-    if theme:
-        add_decorative_element(slide, theme.decorative_style, theme.next_accent(), "bottom")
+    _add_shape(slide, MSO_SHAPE.ROUNDED_RECTANGLE,
+               CONTENT_L + 0.2, CONTENT_TOP + 0.2,
+               CONTENT_W - 0.4, 3.8,
+               fill_color=style.card_bg,
+               line_color=style.border_color, line_width=1.5)
+    _add_textbox(slide, 3.0, 3.5, 7.0, 0.50,
+                 f"[ {placeholder_text} ]", 18, style.border_color,
+                 alignment=PP_ALIGN.CENTER, font_name=style.heading_font)
+    _add_textbox(slide, 3.0, 4.0, 7.0, 0.35,
+                 "Insert diagram or image here", 11, style.border_color,
+                 alignment=PP_ALIGN.CENTER, font_name=style.body_font)
+    if caption:
+        _add_textbox(slide, CONTENT_L, CONTENT_BOTTOM - 0.5, CONTENT_W, 0.35,
+                     caption, SZ_SMALL, style.body_color,
+                     alignment=PP_ALIGN.CENTER, font_name=style.body_font)
 
 
-# ============================================================
-# LAYOUT DISPATCHER
-# ============================================================
+# ── ARCHITECTURE DIAGRAM (new engine) ─────────────────────────
+
+def build_architecture_diagram_slide(prs: Presentation, style: SlideStyle,
+                                     title: str, diagram: dict = None,
+                                     slide_number: int = 0) -> None:
+    """Render a multi-zone architecture diagram using the new diagram engine."""
+    from generation.diagrams.architecture_renderer import ArchitectureDiagramRenderer
+
+    slide = _add_slide(prs, "Content_Basic")
+    _apply_composition(slide, style)
+    _fill_ph(slide, 0, title, size=SZ_TITLE, color=style.title_color,
+             bold=True, font_name=style.heading_font)
+    _clear_body_ph(slide)
+
+    if not diagram:
+        diagram = {}
+
+    renderer = ArchitectureDiagramRenderer(slide, style, diagram)
+    renderer.render()
+
+
+# ── SERVICE GRID (new engine) ─────────────────────────────────
+
+def build_service_grid_slide(prs: Presentation, style: SlideStyle,
+                             title: str, diagram: dict = None,
+                             slide_number: int = 0) -> None:
+    """Render a categorized service/technology grid using the new diagram engine."""
+    from generation.diagrams.service_grid_renderer import ServiceGridRenderer
+
+    slide = _add_slide(prs, "Content_Basic")
+    _apply_composition(slide, style)
+    _fill_ph(slide, 0, title, size=SZ_TITLE, color=style.title_color,
+             bold=True, font_name=style.heading_font)
+    _clear_body_ph(slide)
+
+    if not diagram:
+        diagram = {}
+
+    renderer = ServiceGridRenderer(slide, style, diagram)
+    renderer.render()
+
+
+# ── LAYOUT DISPATCHER ─────────────────────────────────────────
 
 LAYOUT_BUILDERS = {
     "content": build_content_slide,
@@ -1163,50 +1391,68 @@ LAYOUT_BUILDERS = {
     "challenges": build_challenges_slide,
     "timeline": build_timeline_slide,
     "team": build_team_slide,
+    "architecture_diagram": build_architecture_diagram_slide,
+    "service_grid": build_service_grid_slide,
 }
 
 
-def build_slide_by_layout(prs: Presentation, layout: str, data: dict,
-                          slide_number: int = 0) -> None:
+def build_slide_by_layout(prs: Presentation, layout: str, style: SlideStyle,
+                          data: dict, slide_number: int = 0) -> None:
     builder = LAYOUT_BUILDERS.get(layout)
 
     if builder is None:
-        build_content_slide(prs, title=data.get("title", ""),
+        build_content_slide(prs, style, title=data.get("title", ""),
                             body_text=data.get("body", ""),
                             bullets=data.get("bullets", []),
                             slide_number=slide_number)
         return
 
     if layout == "content":
-        builder(prs, title=data.get("title", ""), body_text=data.get("body", ""),
+        builder(prs, style, title=data.get("title", ""), body_text=data.get("body", ""),
                 bullets=data.get("bullets", []), slide_number=slide_number)
     elif layout == "two_column":
         left = data.get("left", {})
         right = data.get("right", {})
-        builder(prs, title=data.get("title", ""), left_title=left.get("title", ""),
+        builder(prs, style, title=data.get("title", ""), left_title=left.get("title", ""),
                 left_bullets=left.get("bullets", []), right_title=right.get("title", ""),
                 right_bullets=right.get("bullets", []), slide_number=slide_number)
     elif layout == "icon_grid":
-        builder(prs, title=data.get("title", ""), items=data.get("items", []), slide_number=slide_number)
+        builder(prs, style, title=data.get("title", ""), items=data.get("items", []),
+                slide_number=slide_number)
     elif layout == "process_flow":
-        builder(prs, title=data.get("title", ""), steps=data.get("steps", []), slide_number=slide_number)
+        builder(prs, style, title=data.get("title", ""), steps=data.get("steps", []),
+                slide_number=slide_number)
     elif layout == "comparison_table":
-        builder(prs, title=data.get("title", ""), headers=data.get("headers", []),
+        builder(prs, style, title=data.get("title", ""), headers=data.get("headers", []),
                 rows=data.get("rows", []), slide_number=slide_number)
     elif layout == "stats_highlight":
-        builder(prs, title=data.get("title", ""), stats=data.get("stats", []), slide_number=slide_number)
+        builder(prs, style, title=data.get("title", ""), stats=data.get("stats", []),
+                slide_number=slide_number)
     elif layout == "key_value":
-        builder(prs, title=data.get("title", ""), pairs=data.get("pairs", []), slide_number=slide_number)
+        builder(prs, style, title=data.get("title", ""), pairs=data.get("pairs", []),
+                slide_number=slide_number)
     elif layout == "image_placeholder":
-        builder(prs, title=data.get("title", ""), placeholder_text=data.get("placeholder_text", "Diagram"),
+        builder(prs, style, title=data.get("title", ""),
+                placeholder_text=data.get("placeholder_text", "Diagram"),
                 caption=data.get("caption", ""), slide_number=slide_number)
     elif layout == "architecture":
-        builder(prs, title=data.get("title", ""), layers=data.get("layers", []), slide_number=slide_number)
+        builder(prs, style, title=data.get("title", ""), layers=data.get("layers", []),
+                slide_number=slide_number)
     elif layout == "technology":
-        builder(prs, title=data.get("title", ""), technologies=data.get("technologies", []), slide_number=slide_number)
+        builder(prs, style, title=data.get("title", ""),
+                technologies=data.get("technologies", []), slide_number=slide_number)
     elif layout == "challenges":
-        builder(prs, title=data.get("title", ""), challenges=data.get("challenges", []), slide_number=slide_number)
+        builder(prs, style, title=data.get("title", ""),
+                challenges=data.get("challenges", []), slide_number=slide_number)
     elif layout == "timeline":
-        builder(prs, title=data.get("title", ""), phases=data.get("phases", []), slide_number=slide_number)
+        builder(prs, style, title=data.get("title", ""), phases=data.get("phases", []),
+                slide_number=slide_number)
     elif layout == "team":
-        builder(prs, title=data.get("title", ""), team_members=data.get("members", []), slide_number=slide_number)
+        builder(prs, style, title=data.get("title", ""),
+                team_members=data.get("members", []), slide_number=slide_number)
+    elif layout == "architecture_diagram":
+        builder(prs, style, title=data.get("title", ""),
+                diagram=data.get("diagram", {}), slide_number=slide_number)
+    elif layout == "service_grid":
+        builder(prs, style, title=data.get("title", ""),
+                diagram=data.get("diagram", {}), slide_number=slide_number)
