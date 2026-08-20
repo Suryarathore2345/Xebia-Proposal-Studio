@@ -54,6 +54,19 @@ templates/from_documents/
 # Image cache (downloaded stock photos)
 data/image_cache/
 
+# Large binary assets (downloaded icons — regeneratable via scripts/build_icon_library.py)
+assets/icons/**/*.png
+assets/icons/**/*.svg
+assets/icons/**/*.jpg
+assets/icons/**/*.jpeg
+assets/icons/**/*.zip
+
+# Documents archive
+Documents.zip
+
+# Old tech icons (superseded by assets/icons/)
+data/tech_icons/
+
 # Temporary
 *.tmp
 *.bak

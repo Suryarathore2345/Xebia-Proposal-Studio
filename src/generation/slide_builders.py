@@ -1375,6 +1375,27 @@ def build_service_grid_slide(prs: Presentation, style: SlideStyle,
     renderer.render()
 
 
+# ── MIGRATION FLOW (new engine) ────────────────────────────────
+
+def build_migration_flow_slide(prs: Presentation, style: SlideStyle,
+                               title: str, diagram: dict = None,
+                               slide_number: int = 0) -> None:
+    """Render a multi-zone left-to-right architecture flow diagram."""
+    from generation.diagrams.migration_flow_renderer import MigrationFlowRenderer
+
+    slide = _add_slide(prs, "Content_Basic")
+    _apply_composition(slide, style)
+    _fill_ph(slide, 0, title, size=SZ_TITLE, color=style.title_color,
+             bold=True, font_name=style.heading_font)
+    _clear_body_ph(slide)
+
+    if not diagram:
+        diagram = {}
+
+    renderer = MigrationFlowRenderer(slide, style, diagram)
+    renderer.render()
+
+
 # ── LAYOUT DISPATCHER ─────────────────────────────────────────
 
 LAYOUT_BUILDERS = {
@@ -1393,6 +1414,7 @@ LAYOUT_BUILDERS = {
     "team": build_team_slide,
     "architecture_diagram": build_architecture_diagram_slide,
     "service_grid": build_service_grid_slide,
+    "migration_flow": build_migration_flow_slide,
 }
 
 
@@ -1454,5 +1476,8 @@ def build_slide_by_layout(prs: Presentation, layout: str, style: SlideStyle,
         builder(prs, style, title=data.get("title", ""),
                 diagram=data.get("diagram", {}), slide_number=slide_number)
     elif layout == "service_grid":
+        builder(prs, style, title=data.get("title", ""),
+                diagram=data.get("diagram", {}), slide_number=slide_number)
+    elif layout == "migration_flow":
         builder(prs, style, title=data.get("title", ""),
                 diagram=data.get("diagram", {}), slide_number=slide_number)
