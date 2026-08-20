@@ -822,6 +822,205 @@ body {
 .footer-brand span { color: var(--xebia-purple); font-weight: 600; }
 
 /* ============================================================
+   TEMPLATE PICKER (Welcome Screen)
+   ============================================================ */
+.template-section {
+  margin-top: 32px;
+  width: 100%;
+  max-width: 700px;
+}
+
+.template-section-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--dark-gray);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 12px;
+}
+
+.template-cards {
+  display: flex;
+  gap: 10px;
+  overflow-x: auto;
+  padding-bottom: 8px;
+  scroll-snap-type: x mandatory;
+}
+
+.template-cards::-webkit-scrollbar { height: 4px; }
+.template-cards::-webkit-scrollbar-thumb { background: var(--light-gray); border-radius: 2px; }
+
+.template-card {
+  flex: 0 0 auto;
+  width: 150px;
+  padding: 14px 12px;
+  background: var(--white);
+  border: 2px solid var(--light-gray);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  text-align: center;
+  transition: all 0.25s var(--ease-out);
+  scroll-snap-align: start;
+}
+
+.template-card:hover {
+  border-color: var(--xebia-purple-muted);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-sm);
+}
+
+.template-card.selected {
+  border-color: var(--xebia-purple);
+  background: var(--xebia-purple-ghost);
+  box-shadow: var(--shadow-purple);
+}
+
+.template-card-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--charcoal);
+  margin-bottom: 4px;
+}
+
+.template-card-desc {
+  font-size: 11px;
+  color: var(--mid-gray);
+  line-height: 1.4;
+}
+
+/* Template select in plan card */
+.plan-template-select {
+  margin-bottom: 12px;
+}
+
+.plan-template-select label {
+  display: block;
+  font-size: 11px;
+  color: var(--mid-gray);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 4px;
+}
+
+.plan-template-select select {
+  width: 100%;
+  padding: 8px 12px;
+  border: 1px solid var(--xebia-purple-muted);
+  border-radius: var(--radius-sm);
+  font-family: var(--font-main);
+  font-size: 13px;
+  color: var(--charcoal);
+  background: var(--white);
+  cursor: pointer;
+  outline: none;
+}
+
+.plan-template-select select:focus {
+  border-color: var(--xebia-purple);
+  box-shadow: 0 0 0 3px var(--xebia-purple-glow);
+}
+
+/* ============================================================
+   IMAGE UPLOAD
+   ============================================================ */
+.btn-attach {
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-sm);
+  border: none;
+  background: transparent;
+  color: var(--mid-gray);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s var(--ease-out);
+  flex-shrink: 0;
+}
+
+.btn-attach:hover {
+  background: var(--xebia-purple-ghost);
+  color: var(--xebia-purple);
+}
+
+.btn-attach svg { width: 18px; height: 18px; }
+
+.image-preview-strip {
+  display: flex;
+  gap: 8px;
+  padding: 8px 0 4px;
+  overflow-x: auto;
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+.image-preview-strip:empty { display: none; }
+
+.image-preview-item {
+  position: relative;
+  flex: 0 0 auto;
+  width: 72px;
+  height: 72px;
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  border: 2px solid var(--light-gray);
+}
+
+.image-preview-item img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.image-preview-item .remove-img {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  width: 18px;
+  height: 18px;
+  background: rgba(0,0,0,0.6);
+  color: var(--white);
+  border: none;
+  border-radius: 50%;
+  font-size: 10px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.image-preview-item:hover .remove-img { opacity: 1; }
+
+.image-preview-item .img-type-badge {
+  position: absolute;
+  bottom: 2px;
+  left: 2px;
+  padding: 1px 5px;
+  background: rgba(0,0,0,0.6);
+  color: var(--white);
+  font-size: 9px;
+  border-radius: 3px;
+  cursor: pointer;
+}
+
+.message-images {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 8px;
+  flex-wrap: wrap;
+}
+
+.message-images img {
+  width: 64px;
+  height: 64px;
+  object-fit: cover;
+  border-radius: var(--radius-sm);
+  border: 1px solid rgba(255,255,255,0.3);
+}
+
+/* ============================================================
    RESPONSIVE
    ============================================================ */
 @media (max-width: 768px) {
@@ -903,6 +1102,12 @@ body {
               <div>Workshop Proposal</div>
             </button>
           </div>
+          <div class="template-section" id="templateSection">
+            <div class="template-section-title">Choose a Template</div>
+            <div class="template-cards" id="templateCards">
+              <!-- Loaded dynamically -->
+            </div>
+          </div>
         </div>
 
       </div>
@@ -912,7 +1117,12 @@ body {
   <!-- ── INPUT BAR ── -->
   <div class="input-area">
     <div class="input-wrapper">
+      <div class="image-preview-strip" id="imagePreviewStrip"></div>
       <div class="input-box">
+        <button class="btn-attach" onclick="document.getElementById('fileInput').click()" title="Attach images">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.49"/></svg>
+        </button>
+        <input type="file" id="fileInput" multiple accept="image/*" style="display:none" onchange="handleFileSelect(event)">
         <textarea
           id="chatInput"
           rows="1"
@@ -963,6 +1173,9 @@ body {
 let sessionId = null;
 let isLoading = false;
 let planReady = false;
+let selectedTemplate = null;
+let pendingImages = [];
+let templates = [];
 
 /* ============================================================
    CHAT FUNCTIONS
@@ -1000,7 +1213,7 @@ function hideWelcome() {
   }
 }
 
-function addMessage(role, content) {
+function addMessage(role, content, imageUrls) {
   const container = document.getElementById('messages');
 
   const msgDiv = document.createElement('div');
@@ -1015,7 +1228,21 @@ function addMessage(role, content) {
 
   const bubble = document.createElement('div');
   bubble.className = 'message-bubble';
-  bubble.innerHTML = formatMessage(content);
+
+  if (imageUrls && imageUrls.length > 0) {
+    const imagesDiv = document.createElement('div');
+    imagesDiv.className = 'message-images';
+    imageUrls.forEach(url => {
+      const img = document.createElement('img');
+      img.src = url;
+      imagesDiv.appendChild(img);
+    });
+    bubble.appendChild(imagesDiv);
+  }
+
+  const textSpan = document.createElement('span');
+  textSpan.innerHTML = formatMessage(content);
+  bubble.appendChild(textSpan);
 
   contentDiv.appendChild(bubble);
   msgDiv.appendChild(avatar);
@@ -1058,6 +1285,11 @@ function hideTyping() {
 function showPlanCard(contentDiv, summary) {
   const card = document.createElement('div');
   card.className = 'plan-card';
+
+  let templateOptions = templates.map(t =>
+    `<option value="${escapeHtml(t.name)}" ${t.name === selectedTemplate ? 'selected' : ''}>${escapeHtml(t.display_name)}</option>`
+  ).join('');
+
   card.innerHTML = `
     <div class="plan-card-header">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
@@ -1068,6 +1300,13 @@ function showPlanCard(contentDiv, summary) {
       <div class="plan-meta-item"><span>Customer</span>${escapeHtml(summary.customer)}</div>
       <div class="plan-meta-item"><span>Sections</span>${summary.sections} sections</div>
       <div class="plan-meta-item"><span>Formats</span>PPTX + DOCX</div>
+    </div>
+    <div class="plan-template-select">
+      <label>Template</label>
+      <select id="planTemplateSelect" onchange="selectedTemplate = this.value">
+        <option value="">Auto (random)</option>
+        ${templateOptions}
+      </select>
     </div>
     <button class="btn-generate" onclick="generateProposal()">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>
@@ -1095,10 +1334,16 @@ async function sendMessage() {
   autoResize(input);
   document.getElementById('sendBtn').disabled = true;
 
-  addMessage('user', text);
+  const imageUrls = pendingImages.map(p => p.dataUrl);
+  addMessage('user', text, imageUrls);
   showTyping();
 
   try {
+    // Upload pending images first
+    if (pendingImages.length > 0 && sessionId) {
+      await uploadPendingImages();
+    }
+
     const res = await fetch('/api/chat', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -1112,6 +1357,11 @@ async function sendMessage() {
     const data = await res.json();
     sessionId = data.session_id;
 
+    // Upload images if we didn't have a session before
+    if (pendingImages.length > 0) {
+      await uploadPendingImages();
+    }
+
     const contentDiv = addMessage('assistant', data.message);
 
     if (data.ready && data.plan_summary) {
@@ -1122,6 +1372,8 @@ async function sendMessage() {
     hideTyping();
     addMessage('assistant', `Sorry, something went wrong. Please try again.\n\n*${err.message}*`);
   } finally {
+    pendingImages = [];
+    renderImagePreviews();
     isLoading = false;
     document.getElementById('sendBtn').disabled = false;
     document.getElementById('chatInput').focus();
@@ -1152,7 +1404,11 @@ async function generateProposal() {
   }, 2000);
 
   try {
-    const res = await fetch(`/api/generate/${sessionId}`, { method: 'POST' });
+    const res = await fetch(`/api/generate/${sessionId}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ template_name: selectedTemplate || null }),
+    });
     clearInterval(stepInterval);
 
     steps.forEach(s => {
@@ -1234,6 +1490,9 @@ async function resetChat() {
   }
 
   planReady = false;
+  selectedTemplate = null;
+  pendingImages = [];
+  renderImagePreviews();
   document.getElementById('messages').innerHTML = `
     <div class="welcome" id="welcomeScreen">
       <div class="welcome-icon">
@@ -1259,12 +1518,120 @@ async function resetChat() {
           <div>Workshop Proposal</div>
         </button>
       </div>
+      <div class="template-section" id="templateSection">
+        <div class="template-section-title">Choose a Template</div>
+        <div class="template-cards" id="templateCards"></div>
+      </div>
     </div>
   `;
+  renderTemplateCards();
+}
+
+/* ============================================================
+   TEMPLATE FUNCTIONS
+   ============================================================ */
+async function loadTemplates() {
+  try {
+    const res = await fetch('/api/templates');
+    const data = await res.json();
+    templates = data.templates || [];
+    renderTemplateCards();
+  } catch (e) {
+    console.warn('Could not load templates:', e);
+  }
+}
+
+function renderTemplateCards() {
+  const container = document.getElementById('templateCards');
+  if (!container || templates.length === 0) return;
+
+  container.innerHTML = templates.map(t => `
+    <div class="template-card ${selectedTemplate === t.name ? 'selected' : ''}"
+         onclick="selectTemplate('${t.name}')">
+      <div class="template-card-name">${escapeHtml(t.display_name)}</div>
+      <div class="template-card-desc">${escapeHtml(t.description)}</div>
+    </div>
+  `).join('');
+}
+
+function selectTemplate(name) {
+  selectedTemplate = selectedTemplate === name ? null : name;
+  renderTemplateCards();
+}
+
+/* ============================================================
+   IMAGE UPLOAD FUNCTIONS
+   ============================================================ */
+function handleFileSelect(e) {
+  const files = Array.from(e.target.files);
+  files.forEach(file => {
+    if (!file.type.startsWith('image/')) return;
+    if (file.size > 10 * 1024 * 1024) return;
+
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      pendingImages.push({
+        file: file,
+        dataUrl: ev.target.result,
+        type: 'reference',
+      });
+      renderImagePreviews();
+    };
+    reader.readAsDataURL(file);
+  });
+  e.target.value = '';
+}
+
+function renderImagePreviews() {
+  const strip = document.getElementById('imagePreviewStrip');
+  if (!strip) return;
+
+  strip.innerHTML = pendingImages.map((img, i) => `
+    <div class="image-preview-item">
+      <img src="${img.dataUrl}" alt="preview">
+      <button class="remove-img" onclick="removePendingImage(${i})">×</button>
+      <div class="img-type-badge" onclick="toggleImageType(${i})">${img.type === 'reference' ? 'REF' : 'EMB'}</div>
+    </div>
+  `).join('');
+}
+
+function removePendingImage(index) {
+  pendingImages.splice(index, 1);
+  renderImagePreviews();
+}
+
+function toggleImageType(index) {
+  pendingImages[index].type = pendingImages[index].type === 'reference' ? 'embed' : 'reference';
+  renderImagePreviews();
+}
+
+async function uploadPendingImages() {
+  if (!sessionId || pendingImages.length === 0) return;
+
+  const refImages = pendingImages.filter(p => p.type === 'reference');
+  const embImages = pendingImages.filter(p => p.type === 'embed');
+
+  for (const batch of [
+    { imgs: refImages, type: 'reference' },
+    { imgs: embImages, type: 'embed' },
+  ]) {
+    if (batch.imgs.length === 0) continue;
+
+    const formData = new FormData();
+    batch.imgs.forEach(img => formData.append('files', img.file));
+    formData.append('image_type', batch.type);
+
+    try {
+      await fetch(`/api/upload/${sessionId}`, { method: 'POST', body: formData });
+    } catch (e) {
+      console.warn('Image upload failed:', e);
+    }
+  }
 }
 
 /* ── init ── */
 document.getElementById('chatInput').focus();
+loadTemplates();
 </script>
 
 </body>
