@@ -49,6 +49,7 @@ references/approved/**/*.pptx
 references/approved/**/*.docx
 references/approved/**/*.pdf
 references/restricted/
+templates/from_documents/
 
 # Image cache (downloaded stock photos)
 data/image_cache/
