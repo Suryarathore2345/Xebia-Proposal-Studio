@@ -87,8 +87,10 @@ def _make_style(theme: DesignTheme, palette: DesignPalette,
 class ProposalPPTGenerator:
     """Generates a complete Xebia-branded PPTX with blueprint-driven design."""
 
-    def __init__(self, plan: dict, template_name: str | None = None):
+    def __init__(self, plan: dict, template_name: str | None = None,
+                 embed_images: list[dict] = None):
         self.plan = plan
+        self.embed_images = embed_images or []
 
         tpl = pick_template(template_name)
         self.template_info = tpl
@@ -376,9 +378,11 @@ class ProposalPPTGenerator:
 
 
 def generate_proposal_pptx(plan: dict, output_path: str | Path,
-                           template_name: str | None = None) -> Path:
+                           template_name: str | None = None,
+                           embed_images: list[dict] = None) -> Path:
     """Convenience function to generate a PPTX from a plan dict."""
-    generator = ProposalPPTGenerator(plan, template_name=template_name)
+    generator = ProposalPPTGenerator(plan, template_name=template_name,
+                                     embed_images=embed_images)
     return generator.generate(output_path)
 
 

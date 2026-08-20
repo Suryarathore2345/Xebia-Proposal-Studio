@@ -26,6 +26,8 @@ TEMPLATE_REGISTRY: dict[str, dict] = {
         "file": "xebia_retail.pptx",
         "dir": TEMPLATES_DIR,
         "family": "xebia_standard",
+        "display_name": "Xebia Standard",
+        "description": "Clean, modern Xebia branded template — best for most proposals",
         "content_layout": "Content_Basic",
         "cover_layout": "Main-cover_dark",
         "chapter_layout": "Chapter_light",
@@ -36,6 +38,8 @@ TEMPLATE_REGISTRY: dict[str, dict] = {
         "file": "Proposal-Synapse_to_Fabric_Migration.pptx",
         "dir": FROM_DOCS_DIR,
         "family": "xebia_standard",
+        "display_name": "Synapse Migration",
+        "description": "Data platform migration theme — ideal for Fabric/Synapse projects",
         "content_layout": "Content_Basic",
         "cover_layout": "Main-cover_dark",
         "chapter_layout": "Chapter_light",
@@ -46,6 +50,8 @@ TEMPLATE_REGISTRY: dict[str, dict] = {
         "file": "Xebias_Technical_Proposal_for_PNB_MetLife.pptx",
         "dir": FROM_DOCS_DIR,
         "family": "xebia_standard",
+        "display_name": "Enterprise Technical",
+        "description": "Technical depth template — suited for insurance, BFSI proposals",
         "content_layout": "Content_Basic",
         "cover_layout": "Main-cover_dark",
         "chapter_layout": "Chapter_light",
@@ -56,6 +62,8 @@ TEMPLATE_REGISTRY: dict[str, dict] = {
         "file": "Xebias_Microsoft_Fabric_Data_Platform_Implementation_for_MOH.pptx",
         "dir": FROM_DOCS_DIR,
         "family": "xebia_standard",
+        "display_name": "Fabric Platform",
+        "description": "Microsoft Fabric data platform focused — government & enterprise",
         "content_layout": "Content_Basic",
         "cover_layout": "Main-cover_dark",
         "chapter_layout": "Chapter_light",
@@ -66,6 +74,8 @@ TEMPLATE_REGISTRY: dict[str, dict] = {
         "file": "Xebia-Carrington_Microsoft_Fabric_Implementation_Engagement_.pptx",
         "dir": FROM_DOCS_DIR,
         "family": "carrington",
+        "display_name": "Carrington Style",
+        "description": "Co-branded style template — for joint-venture or partner proposals",
         "content_layout": "Title Content/White",
         "cover_layout": "Title Slide / Dark",
         "chapter_layout": "Section Divider / Light",
@@ -76,6 +86,8 @@ TEMPLATE_REGISTRY: dict[str, dict] = {
         "file": "Xebias_Proposal_Walkthrough_for_HCT.pptx",
         "dir": FROM_DOCS_DIR,
         "family": "hct",
+        "display_name": "Executive Walkthrough",
+        "description": "Executive-level walkthrough — minimal text, high visual impact",
         "content_layout": "Content_01_Left",
         "cover_layout": "Cover_01_Dark",
         "chapter_layout": "Section_Slides_01",
@@ -86,6 +98,8 @@ TEMPLATE_REGISTRY: dict[str, dict] = {
         "file": "Data_&_AI__Retail_Case_Studies_Use_Case_Aligned.pptx",
         "dir": FROM_DOCS_DIR,
         "family": "xebia_standard",
+        "display_name": "Retail & Case Studies",
+        "description": "Case-study heavy template — great for retail, CPG, FMCG proposals",
         "content_layout": "Content_Basic",
         "cover_layout": "Main-cover_dark",
         "chapter_layout": "Chapter_light",
@@ -93,6 +107,21 @@ TEMPLATE_REGISTRY: dict[str, dict] = {
         "toc_layout": "Table of contents",
     },
 }
+
+
+def get_template_info() -> list[dict]:
+    """Return metadata for all available templates."""
+    result = []
+    for name, info in TEMPLATE_REGISTRY.items():
+        path = info["dir"] / info["file"]
+        if path.exists():
+            result.append({
+                "name": name,
+                "display_name": info.get("display_name", name),
+                "family": info.get("family", "xebia_standard"),
+                "description": info.get("description", ""),
+            })
+    return result
 
 
 def get_available_templates() -> list[str]:

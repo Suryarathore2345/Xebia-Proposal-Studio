@@ -22,6 +22,15 @@ class ProposalSession:
         self.plan: dict | None = None
         self.status = "chatting"
         self.generated_files: dict = {}
+        self.images: list[dict] = []
+
+    @property
+    def reference_images(self) -> list[dict]:
+        return [img for img in self.images if img.get("type") == "reference"]
+
+    @property
+    def embed_images(self) -> list[dict]:
+        return [img for img in self.images if img.get("type") == "embed"]
 
     def chat(self, user_message: str) -> dict:
         self.history.append({"role": "user", "content": user_message})
@@ -33,6 +42,7 @@ class ProposalSession:
                 user_input=user_message,
                 references=references.get("content_references", []) if references else [],
                 conversation_history=self.history,
+                images=self.reference_images if self.reference_images else None,
             )
         except Exception as e:
             error_msg = f"I encountered an issue processing your request: {str(e)}"
@@ -61,7 +71,7 @@ class ProposalSession:
             self.history.append({"role": "assistant", "content": msg})
             return {"ready": False, "message": msg}
 
-    def generate(self) -> dict:
+    def generate(self, template_name: str | None = None) -> dict:
         if not self.plan:
             return {"error": "No proposal plan ready. Keep chatting to build one."}
 
@@ -74,7 +84,8 @@ class ProposalSession:
 
         try:
             pptx_path = output_dir / "ppt" / f"{safe_title}_{timestamp}.pptx"
-            generate_proposal_pptx(self.plan, pptx_path)
+            generate_proposal_pptx(self.plan, pptx_path, template_name=template_name,
+                                   embed_images=self.embed_images if self.embed_images else None)
             results["pptx"] = str(pptx_path)
             self.generated_files["pptx"] = str(pptx_path)
         except Exception as e:
