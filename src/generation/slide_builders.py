@@ -23,6 +23,30 @@ from generation.design_generator import SlideStyle, ProposalDesignSystem
 from generation.template_engine import create_themed_presentation, add_world_map
 from generation.design_engine.blueprints import get_blueprint, render_blueprint
 
+
+def _resolve_tech_icon(name: str):
+    """Look up a real icon file for a technology/service name.
+
+    Tries the broad AWS/Azure/Fabric icon registry first, then the
+    curated general-tools registry (Kafka, Airflow, PostgreSQL, etc.).
+    Returns None if neither has a match — callers keep their existing
+    text-only rendering in that case.
+    """
+    if not name:
+        return None
+    try:
+        from images.icon_library import IconLibrary
+        icon = IconLibrary().get_icon(name)
+        if icon:
+            return icon
+    except Exception:
+        pass
+    try:
+        from images.tech_icon_registry import TechIconRegistry
+        return TechIconRegistry().get_icon(name)
+    except Exception:
+        return None
+
 # ── Layout geometry (from template placeholder analysis) ──────
 # These are physical constraints, not design choices.
 
@@ -1110,10 +1134,30 @@ def build_architecture_slide(prs: Presentation, style: SlideStyle, title: str,
                            cx, cy, comp_w, comp_h,
                            fill_color="#FFFFFF",
                            line_color=color, line_width=1)
-                _add_textbox(slide, cx + 0.05, cy + (comp_h - 0.25) / 2,
-                             comp_w - 0.1, 0.25,
-                             comp, SZ_TINY, style.body_color,
-                             alignment=PP_ALIGN.CENTER, font_name=style.body_font)
+
+                icon_path = _resolve_tech_icon(comp)
+                if icon_path and comp_h >= 0.5:
+                    icon_size = min(0.32, comp_h - 0.32)
+                    icon_x = cx + (comp_w - icon_size) / 2
+                    icon_y = cy + 0.06
+                    try:
+                        slide.shapes.add_picture(str(icon_path), Inches(icon_x), Inches(icon_y),
+                                                  height=Inches(icon_size))
+                    except Exception:
+                        icon_path = None
+
+                if icon_path and comp_h >= 0.5:
+                    label_top = cy + 0.06 + icon_size + 0.03
+                    label_h = max(0.15, cy + comp_h - label_top)
+                    _add_textbox(slide, cx + 0.05, label_top,
+                                 comp_w - 0.1, label_h,
+                                 comp, SZ_TINY - 1, style.body_color,
+                                 alignment=PP_ALIGN.CENTER, font_name=style.body_font)
+                else:
+                    _add_textbox(slide, cx + 0.05, cy + (comp_h - 0.25) / 2,
+                                 comp_w - 0.1, 0.25,
+                                 comp, SZ_TINY, style.body_color,
+                                 alignment=PP_ALIGN.CENTER, font_name=style.body_font)
 
         if i < num_layers - 1:
             arrow_y = y + layer_h + 0.01
@@ -1161,8 +1205,21 @@ def build_technology_slide(prs: Presentation, style: SlideStyle, title: str,
                      category.upper(), 8, style.palette.text_light, bold=True,
                      alignment=PP_ALIGN.CENTER, font_name=style.heading_font)
 
-        _add_textbox(slide, x + 0.22, y + 0.50, card_w - 0.40, 0.35,
-                     tech.get("name", ""), SZ_SUBTITLE, style.title_color,
+        tech_name = tech.get("name", "")
+        icon_path = _resolve_tech_icon(tech_name)
+        name_x = x + 0.22
+        name_w = card_w - 0.40
+        if icon_path:
+            icon_size = 0.34
+            try:
+                slide.shapes.add_picture(str(icon_path), Inches(x + card_w - icon_size - 0.18),
+                                          Inches(y + 0.10), height=Inches(icon_size))
+                name_w = card_w - 0.40 - icon_size - 0.10
+            except Exception:
+                pass
+
+        _add_textbox(slide, name_x, y + 0.50, name_w, 0.35,
+                     tech_name, SZ_SUBTITLE, style.title_color,
                      bold=True, font_name=style.heading_font)
 
         desc = tech.get("description", "")
