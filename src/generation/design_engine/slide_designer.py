@@ -161,7 +161,7 @@ def _llm_design(manifest: list[dict], theme: DesignTheme, provider: str = "claud
         slide_count=len(manifest),
     )
 
-    text = generate_text(prompt, max_tokens=4000).strip()
+    text = generate_text(prompt, max_tokens=8000).strip()
     if text.startswith("```"):
         lines = text.split("\n")
         lines = [l for l in lines if not l.strip().startswith("```")]
