@@ -29961,7 +29961,9 @@
       "subcategory": "data-factory",
       "service_type": "cloud",
       "aliases": [
-        "Data Factory (Fabric)"
+        "Data Factory (Fabric)",
+        "Azure Data Factory (Fabric)",
+        "ADF (Fabric)"
       ],
       "keywords": [
         "fabric",
@@ -30105,7 +30107,9 @@
       "subcategory": "lakehouse",
       "service_type": "cloud",
       "aliases": [
-        "Lakehouse"
+        "Lakehouse",
+        "Bronze Layer",
+        "Silver Layer"
       ],
       "keywords": [
         "fabric",
@@ -30153,7 +30157,10 @@
       "subcategory": "warehouse",
       "service_type": "cloud",
       "aliases": [
-        "Fabric Warehouse"
+        "Fabric Warehouse",
+        "Fabric Data Warehouse",
+        "Data Warehouse (Fabric)",
+        "Gold Layer"
       ],
       "keywords": [
         "fabric",
@@ -30369,7 +30376,8 @@
       "subcategory": "real-time-intelligence",
       "service_type": "cloud",
       "aliases": [
-        "Eventhouse"
+        "Eventhouse",
+        "Event House"
       ],
       "keywords": [
         "fabric",
@@ -30417,7 +30425,8 @@
       "subcategory": "real-time-intelligence",
       "service_type": "cloud",
       "aliases": [
-        "KQL Database"
+        "KQL Database",
+        "KQL DB"
       ],
       "keywords": [
         "fabric",
@@ -30489,7 +30498,8 @@
       "subcategory": "power-bi",
       "service_type": "cloud",
       "aliases": [
-        "Power BI"
+        "Power BI",
+        "PowerBI"
       ],
       "keywords": [
         "fabric",
