@@ -1,4 +1,4 @@
-"""Design theme generator — proposal-level visual strategy via Gemini.
+"""Design theme generator — proposal-level visual strategy via Claude.
 
 Generates a DesignTheme once per deck that controls which purple shades
 to emphasize, background distribution, typography, and card styling.
@@ -7,14 +7,13 @@ to emphasize, background distribution, typography, and card styling.
 from __future__ import annotations
 
 import json
-import os
 from dataclasses import dataclass, field
-from pathlib import Path
 
 from generation.design_engine.palette import (
     PURPLE, NEUTRALS, GRADIENTS, GradientDef,
     ACCENT_CYCLE_DEEP, ACCENT_CYCLE_SOFT, ACCENT_CYCLE_MIXED,
 )
+from llm.anthropic_client import get_client, MODEL
 
 
 @dataclass
@@ -52,30 +51,6 @@ class DesignTheme:
     @property
     def text_accent(self) -> str:
         return self.primary_accent
-
-
-# ── Gemini client ───────────────────────────────────────────────
-
-_client = None
-
-
-def _get_client():
-    global _client
-    if _client is not None:
-        return _client
-    env_path = Path(__file__).resolve().parent.parent.parent.parent / ".env"
-    if env_path.exists():
-        for line in env_path.read_text(encoding="utf-8").splitlines():
-            line = line.strip()
-            if line and not line.startswith("#") and "=" in line:
-                k, v = line.split("=", 1)
-                os.environ.setdefault(k.strip(), v.strip())
-    api_key = os.environ.get("GEMINI_API_KEY", "")
-    if not api_key:
-        raise RuntimeError("GEMINI_API_KEY not set")
-    from google import genai
-    _client = genai.Client(api_key=api_key)
-    return _client
 
 
 # ── Theme generation prompt ─────────────────────────────────────
@@ -152,7 +127,7 @@ All hex values MUST come from the approved lists above."""
 
 
 def generate_theme(plan: dict) -> DesignTheme:
-    """Generate a unique design theme for this proposal via Gemini."""
+    """Generate a unique design theme for this proposal via Claude."""
     title = plan.get("title", "Proposal")
     customer = plan.get("customer", "Client")
     industry = plan.get("industry", "technology")
@@ -169,19 +144,16 @@ def generate_theme(plan: dict) -> DesignTheme:
     )
 
     try:
-        client = _get_client()
-        from google.genai import types
-        response = client.models.generate_content(
-            model="gemini-3.6-flash",
-            contents=prompt,
-            config=types.GenerateContentConfig(
-                temperature=0.7,
-                max_output_tokens=2000,
-            ),
+        client = get_client()
+        response = client.messages.create(
+            model=MODEL,
+            max_tokens=2000,
+            messages=[{"role": "user", "content": prompt}],
         )
-        return _parse_theme(response.text)
+        text = "".join(block.text for block in response.content if block.type == "text")
+        return _parse_theme(text)
     except Exception as e:
-        print(f"[ThemeGenerator] Gemini failed ({e}), using fallback")
+        print(f"[ThemeGenerator] Claude failed ({e}), using fallback")
         return _fallback_theme(industry)
 
 

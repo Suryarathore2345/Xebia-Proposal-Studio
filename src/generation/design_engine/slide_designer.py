@@ -1,8 +1,8 @@
-"""Per-slide blueprint selection — Gemini picks blueprints for each slide.
+"""Per-slide blueprint selection — Claude picks blueprints for each slide.
 
 Given the slide manifest and design theme, selects and parameterizes
 a blueprint for every slide. Falls back to rule-based selection
-if Gemini is unavailable.
+if Claude is unavailable.
 """
 
 from __future__ import annotations
@@ -83,7 +83,7 @@ def build_slide_manifest(plan: dict) -> list[dict]:
     return slides
 
 
-# ── Gemini-based selection ──────────────────────────────────────
+# ── Claude-based selection ───────────────────────────────────────
 
 DESIGNER_PROMPT = """\
 You are a presentation layout designer. For each slide below, select the best
@@ -119,25 +119,24 @@ Array MUST have exactly {slide_count} entries, one per slide in the manifest."""
 
 
 def design_slides(plan: dict, theme: DesignTheme) -> list[SlideDesignSpec]:
-    """Select blueprints for all slides via Gemini, with fallback."""
+    """Select blueprints for all slides via Claude, with fallback."""
     manifest = build_slide_manifest(plan)
 
     try:
-        specs = _gemini_design(manifest, theme)
+        specs = _claude_design(manifest, theme)
         if len(specs) == len(manifest):
             specs = enforce_variety(specs, manifest)
             return specs
         print(f"[SlideDesigner] Count mismatch ({len(specs)} vs {len(manifest)}), using fallback")
     except Exception as e:
-        print(f"[SlideDesigner] Gemini failed ({e}), using rule-based fallback")
+        print(f"[SlideDesigner] Claude failed ({e}), using rule-based fallback")
 
     return _rule_based_design(manifest, theme)
 
 
-def _gemini_design(manifest: list[dict], theme: DesignTheme) -> list[SlideDesignSpec]:
-    """Call Gemini to select blueprints."""
-    from generation.design_engine.theme_generator import _get_client
-    from google.genai import types
+def _claude_design(manifest: list[dict], theme: DesignTheme) -> list[SlideDesignSpec]:
+    """Call Claude to select blueprints."""
+    from llm.anthropic_client import get_client, MODEL
 
     manifest_text = "\n".join(
         f"  {i+1}. [{s['type']}] \"{s['title']}\" (id: {s['id']})"
@@ -159,17 +158,14 @@ def _gemini_design(manifest: list[dict], theme: DesignTheme) -> list[SlideDesign
         slide_count=len(manifest),
     )
 
-    client = _get_client()
-    response = client.models.generate_content(
-        model="gemini-3.6-flash",
-        contents=prompt,
-        config=types.GenerateContentConfig(
-            temperature=0.6,
-            max_output_tokens=4000,
-        ),
+    client = get_client()
+    response = client.messages.create(
+        model=MODEL,
+        max_tokens=4000,
+        messages=[{"role": "user", "content": prompt}],
     )
 
-    text = response.text.strip()
+    text = "".join(block.text for block in response.content if block.type == "text").strip()
     if text.startswith("```"):
         lines = text.split("\n")
         lines = [l for l in lines if not l.strip().startswith("```")]
@@ -221,7 +217,7 @@ _DEFAULT_ACCENT_FAMILY = "topbar"
 
 
 def _rule_based_design(manifest: list[dict], theme: DesignTheme) -> list[SlideDesignSpec]:
-    """Randomized fallback when Gemini is unavailable."""
+    """Randomized fallback when Claude is unavailable."""
     import random
 
     family_keys = list(_ACCENT_FAMILIES.keys())

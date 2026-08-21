@@ -1,8 +1,8 @@
 """Xebia Proposal PPT Generator — Blueprint-driven dynamic design.
 
 Orchestrates the full pipeline:
-  1. Generate a DesignTheme per proposal via Gemini (purple spectrum)
-  2. Select blueprints for each slide via Gemini (30+ visual combinations)
+  1. Generate a DesignTheme per proposal via Claude (purple spectrum)
+  2. Select blueprints for each slide via Claude (30+ visual combinations)
   3. Render blueprint backgrounds/accents, then fill content via builders
   4. Enforce variety constraints (no repetition, balanced dark/light)
   5. Integrate Pexels stock images where available
@@ -92,6 +92,15 @@ class ProposalPPTGenerator:
         self.plan = plan
         self.embed_images = embed_images or []
 
+        self._embed_image_paths = {
+            img["id"]: img["path"] for img in self.embed_images
+            if img.get("path") and Path(img["path"]).exists()
+        }
+        self._image_placements_by_key: dict[tuple, dict] = {}
+        for placement in plan.get("image_placements", []) or []:
+            key = (placement.get("section", ""), placement.get("slide_index", 0) or 0)
+            self._image_placements_by_key[key] = placement
+
         tpl = pick_template(template_name)
         self.template_info = tpl
         print(f"[PPTGenerator] Template: {tpl['name']} ({tpl['family']})")
@@ -165,6 +174,29 @@ class ProposalPPTGenerator:
         self._divider_counter += 1
         return self._divider_counter % 3 == 0
 
+    def _maybe_insert_companion_image(self, section_key: str, slide_index: int, base_title: str):
+        """If the plan places a user-uploaded image on this slide, insert it as
+        a dedicated photo slide immediately following it — never overlaid onto
+        an already-rendered layout, so specialized renders (architecture,
+        tables, stat grids) are never disturbed."""
+        placement = self._image_placements_by_key.pop((section_key, slide_index), None)
+        if not placement:
+            return
+        image_path = self._embed_image_paths.get(placement.get("image_id"))
+        if not image_path:
+            return
+
+        spec = self._next_spec()
+        style = self._style_for_spec(spec)
+        build_content_photo_slide(
+            self.prs, style,
+            title=f"{base_title} — Reference" if base_title else "Reference Image",
+            body_text=placement.get("caption", ""),
+            image_path=image_path,
+            prefer_left=(placement.get("position") == "left"),
+            slide_number=self._next_slide_num(),
+        )
+
     def generate(self, output_path: str | Path) -> Path:
         output_path = Path(output_path)
         output_path.parent.mkdir(parents=True, exist_ok=True)
@@ -219,6 +251,7 @@ class ProposalPPTGenerator:
             date=data.get("date", ""),
             image_path=self._fetch_image(data, "cover"),
         )
+        self._maybe_insert_companion_image("cover", 0, data.get("title", "Cover"))
 
     def _build_toc(self, data: dict):
         spec = self._next_spec()
@@ -250,6 +283,7 @@ class ProposalPPTGenerator:
             key_points=data.get("key_points", []),
             slide_number=self._next_slide_num(),
         )
+        self._maybe_insert_companion_image("executive_summary", 0, data.get("title", "Executive Summary"))
 
     def _build_content_section(self, key: str, data: dict):
         title = data.get("title", key.replace("_", " ").title())
@@ -262,17 +296,18 @@ class ProposalPPTGenerator:
 
         slides = data.get("slides", [])
         if slides:
-            for slide_data in slides:
+            for i, slide_data in enumerate(slides):
                 layout = slide_data.get("layout")
                 image_path = self._fetch_image(slide_data, "content")
                 spec = self._next_spec()
                 style = self._style_for_spec(spec)
+                slide_title = slide_data.get("title", title)
 
                 if layout and layout in PHOTO_ELIGIBLE_LAYOUTS and image_path:
                     use_dark = self._photo_side_counter % 4 == 3
                     build_content_photo_slide(
                         self.prs, style,
-                        title=slide_data.get("title", title),
+                        title=slide_title,
                         body_text=slide_data.get("body", ""),
                         bullets=slide_data.get("bullets", []),
                         image_path=image_path,
@@ -289,7 +324,7 @@ class ProposalPPTGenerator:
                     if image_path:
                         build_content_photo_slide(
                             self.prs, style,
-                            title=slide_data.get("title", title),
+                            title=slide_title,
                             body_text=slide_data.get("body", ""),
                             bullets=slide_data.get("bullets", []),
                             image_path=image_path,
@@ -299,11 +334,12 @@ class ProposalPPTGenerator:
                     else:
                         build_content_slide(
                             self.prs, style,
-                            title=slide_data.get("title", title),
+                            title=slide_title,
                             body_text=slide_data.get("body", ""),
                             bullets=slide_data.get("bullets", []),
                             slide_number=self._next_slide_num(),
                         )
+                self._maybe_insert_companion_image(key, i, slide_title)
         else:
             layout = data.get("layout")
             spec = self._next_spec()
@@ -321,6 +357,7 @@ class ProposalPPTGenerator:
                     bullets=data.get("bullets", []),
                     slide_number=self._next_slide_num(),
                 )
+            self._maybe_insert_companion_image(key, 0, title)
 
     def _build_timeline(self, data: dict):
         title = data.get("title", "Timeline")
@@ -334,6 +371,7 @@ class ProposalPPTGenerator:
         build_timeline_slide(self.prs, style, title=title,
                              phases=data.get("phases", []),
                              slide_number=self._next_slide_num())
+        self._maybe_insert_companion_image("timeline", 0, title)
 
     def _build_team(self, data: dict):
         title = data.get("title", "Team Structure")
@@ -347,6 +385,7 @@ class ProposalPPTGenerator:
         build_team_slide(self.prs, style, title=title,
                          team_members=data.get("members", []),
                          slide_number=self._next_slide_num())
+        self._maybe_insert_companion_image("team_structure", 0, title)
 
     def _build_commercials(self, data: dict):
         title = data.get("title", "Commercials")
@@ -362,6 +401,7 @@ class ProposalPPTGenerator:
                                 total=data.get("total", ""),
                                 assumptions=data.get("assumptions", []),
                                 slide_number=self._next_slide_num())
+        self._maybe_insert_companion_image("commercials", 0, title)
 
     def _build_closing(self, data: dict):
         spec = self._next_spec()
@@ -375,6 +415,7 @@ class ProposalPPTGenerator:
             slide_number=self._next_slide_num(),
             image_path=self._fetch_image(data, "closing"),
         )
+        self._maybe_insert_companion_image("closing", 0, data.get("title", "Thank You"))
 
 
 def generate_proposal_pptx(plan: dict, output_path: str | Path,

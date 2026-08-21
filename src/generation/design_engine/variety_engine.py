@@ -1,6 +1,6 @@
 """Variety engine — enforces visual distribution and anti-repetition constraints.
 
-Post-processes blueprint selections (whether from Gemini or rule-based)
+Post-processes blueprint selections (whether from Claude or rule-based)
 to ensure no monotonous patterns slip through.
 """
 

@@ -8,7 +8,7 @@ from datetime import datetime
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from retrieval.search import search_for_proposal
-from llm.gemini_client import generate_proposal_plan
+from llm.anthropic_client import generate_proposal_plan, review_and_improve_plan
 from generation.pptx_generator import generate_proposal_pptx
 from generation.docx_generator import generate_proposal_docx
 
@@ -42,7 +42,9 @@ class ProposalSession:
                 user_input=user_message,
                 references=references.get("content_references", []) if references else [],
                 conversation_history=self.history,
-                images=self.reference_images if self.reference_images else None,
+                images=self.images if self.images else None,
+                layout_references=references.get("layout_references", []) if references else [],
+                slide_references=references.get("slide_references", []) if references else [],
             )
         except Exception as e:
             error_msg = f"I encountered an issue processing your request: {str(e)}"
@@ -50,6 +52,14 @@ class ProposalSession:
             return {"ready": False, "message": error_msg}
 
         if result.get("ready"):
+            try:
+                reviewed = review_and_improve_plan(result)
+                if not reviewed.get("image_placements") and result.get("image_placements"):
+                    reviewed["image_placements"] = result["image_placements"]
+                result = reviewed
+            except Exception as e:
+                print(f"[ProposalSession] Review pass failed ({e}), using unreviewed plan")
+
             self.plan = result
             self.status = "plan_ready"
             self.history.append({

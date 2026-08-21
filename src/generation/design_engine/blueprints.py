@@ -1,6 +1,6 @@
 """Slide Blueprints — curated combinations of background + zone + accents.
 
-Each blueprint produces a distinct visual layout. Gemini selects from
+Each blueprint produces a distinct visual layout. Claude selects from
 this library rather than inventing layouts from scratch.
 """
 

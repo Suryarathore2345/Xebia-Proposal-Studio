@@ -76,28 +76,32 @@ This flow traces every step from the moment a user types a proposal request to w
 
 ### Step 5: LLM Generates the Proposal Plan
 
-**What happens:** Gemini 3.6 Flash receives the user's request + reference content and generates a complete structured proposal plan as JSON.
+**What happens:** Claude Sonnet 5 receives the user's request + reference content (and any uploaded images) and generates a complete structured proposal plan as JSON, via a forced tool call.
 
-**How:** `generate_proposal_plan()` in `gemini_client.py`:
+**How:** `generate_proposal_plan()` in `llm/anthropic_client.py`:
 
 1. **Constructs the prompt:** Combines:
-   - A detailed SYSTEM_PROMPT (~3000 words) that defines:
+   - A detailed SYSTEM_PROMPT (~3000 words, sent as a cached system block) that defines:
      - Conversational behavior (ask clarifying questions if needed)
-     - The exact JSON output structure required
+     - The exact JSON output structure required (enforced via the `submit_proposal_plan` tool schema, not free-text parsing)
      - All 12 available slide layouts with their data schemas
      - Content quality rules (no empty sections, specific content, 6-7 different layouts, etc.)
      - The complete storyline structure (16 possible sections)
+     - How to place user-uploaded "embed" images onto the most relevant slide via `image_placements`
    - The user's message
-   - Reference content from the search results
+   - Reference content, layout references, and slide references from the search results
    - Conversation history (for multi-turn refinement)
+   - Any reference or embed images attached to the session, sent as vision content blocks
 
-2. **Calls Gemini API:** Sends to `gemini-3.6-flash` with `max_output_tokens=16000` and `temperature=0.7`.
+2. **Calls the Claude API:** Sends to `claude-sonnet-5` with `max_tokens=16000`, `temperature=0.7`, and `tool_choice` forced to `submit_proposal_plan` so the response is always valid structured JSON.
 
-3. **Parses the response:** The LLM returns either:
+3. **Reads the tool call:** Claude returns either:
    - `{"ready": false, "message": "...clarifying questions..."}` — if more info is needed
-   - `{"ready": true, "title": "...", "customer": "...", "storyline": [...], "sections": {...}}` — the complete plan
+   - `{"ready": true, "title": "...", "customer": "...", "storyline": [...], "sections": {...}, "image_placements": [...]}` — the complete plan
 
-4. **The plan structure:** When ready, it contains:
+4. **Review & improve pass:** Before the plan is shown to the user, `ProposalSession.chat()` sends it back through `review_and_improve_plan()` — a second Claude call (its own system prompt, `REVIEW_SYSTEM_PROMPT`) that checks content quality, storyline flow, layout variety, architecture realism, cross-section consistency, and completeness, and returns a corrected plan in the same schema. If this call fails for any reason, the original unreviewed plan is used instead so generation never blocks on it.
+
+5. **The plan structure:** When ready, it contains:
    ```
    {
      "ready": true,
@@ -121,9 +125,9 @@ This flow traces every step from the moment a user types a proposal request to w
    }
    ```
 
-**Why Gemini decides the layout:** Each section can contain multiple slides, and each slide specifies a `layout` field (content, two_column, icon_grid, process_flow, architecture, stats_highlight, etc.). The LLM picks the best layout based on the content type — lists become icon_grid, comparisons become two_column, metrics become stats_highlight, etc.
+**Why Claude decides the layout:** Each section can contain multiple slides, and each slide specifies a `layout` field (content, two_column, icon_grid, process_flow, architecture, stats_highlight, etc.). The LLM picks the best layout based on the content type — lists become icon_grid, comparisons become two_column, metrics become stats_highlight, etc.
 
-**Files involved:** `src/planner/proposal_planner.py` → `src/llm/gemini_client.py` → Gemini API
+**Files involved:** `src/planner/proposal_planner.py` → `src/llm/anthropic_client.py` → Claude API
 
 ---
 
@@ -179,7 +183,9 @@ This flow traces every step from the moment a user types a proposal request to w
 
 5. **Content sections with multiple slides:** For sections like `proposed_solution` that contain a `slides` array, each slide is dispatched through `build_slide_by_layout()` which routes by the `layout` field (content, two_column, icon_grid, process_flow, comparison_table, stats_highlight, key_value, architecture, technology, challenges).
 
-6. **Save:** The finished Presentation object is saved to `outputs/ppt/{customer}_{timestamp}.pptx`.
+6. **Place uploaded images:** For every entry in the plan's `image_placements`, `ProposalPPTGenerator` inserts the referenced upload as a dedicated photo slide immediately after its target slide (never overlaid on top of an already-rendered layout, so architecture diagrams, tables, and stat grids are never disturbed).
+
+7. **Save:** The finished Presentation object is saved to `outputs/ppt/{customer}_{timestamp}.pptx`.
 
 #### 7b. DOCX Generation
 
@@ -223,15 +229,23 @@ User types request
                                       │
                          ┌────────────┴────────────┐
                          ▼                         ▼
-              [Semantic Search]            [Gemini LLM Call]
-              search.py → embedder.py      gemini_client.py
-              embedding_store.py           gemini-3.6-flash
+              [Semantic Search]            [Claude LLM Call]
+              search.py → embedder.py      anthropic_client.py
+              embedding_store.py           claude-sonnet-5
                          │                         │
                          └────────────┬────────────┘
                                       │
                                       ▼
                               Plan JSON returned
-                              (storyline + sections)
+                                      │
+                                      ▼
+                              [Review & Improve Pass]
+                              anthropic_client.py
+                              review_and_improve_plan()
+                                      │
+                                      ▼
+                              Corrected plan JSON
+                              (storyline + sections + image_placements)
                                       │
                                       ▼
                               [Frontend shows plan card]
@@ -464,7 +478,7 @@ Currently the extraction and embedding steps are manual. To automate:
 
 ```
 Doc_Creation_Tool/
-├── .env                          # GEMINI_API_KEY (never committed)
+├── .env                          # ANTHROPIC_API_KEY (never committed)
 ├── .claude/launch.json           # Dev server config for Claude Code
 ├── templates/
 │   ├── xebia_retail.pptx         # Primary Xebia template (30 layouts)
@@ -489,7 +503,7 @@ Doc_Creation_Tool/
     ├── planner/
     │   └── proposal_planner.py   # Session orchestrator
     ├── llm/
-    │   └── gemini_client.py      # Gemini API + system prompt
+    │   └── anthropic_client.py   # Claude API + system prompt + review pass
     ├── retrieval/
     │   ├── search.py             # Cosine similarity search
     │   ├── embedder.py           # Embedding generation
@@ -512,7 +526,7 @@ Doc_Creation_Tool/
 | Component | Technology | Why |
 |---|---|---|
 | Web Framework | FastAPI + Uvicorn | Async, auto-docs, fast |
-| LLM | Gemini 3.6 Flash | 16K output tokens, structured JSON |
+| LLM | Claude Sonnet 5 | 16K output tokens, forced tool-call JSON, vision for uploaded images |
 | Embeddings | all-MiniLM-L6-v2 | Local, fast, 384-dim, no API cost |
 | PPT Generation | python-pptx | Full programmatic control of PPTX |
 | DOCX Generation | python-docx | Full programmatic control of DOCX |

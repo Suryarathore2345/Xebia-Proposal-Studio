@@ -1,9 +1,9 @@
-"""Gemini-driven design engine for visually diverse, brand-aligned slides.
+"""Claude-driven design engine for visually diverse, brand-aligned slides.
 
 Three-layer system:
-  Layer 1: DesignTheme — proposal-level visual strategy (Gemini, once per deck)
+  Layer 1: DesignTheme — proposal-level visual strategy (Claude, once per deck)
   Layer 2: SlideBlueprint — 30+ curated bg + zone + accent combinations (Python)
-  Layer 3: Per-slide design spec — Gemini selects + parameterizes blueprints
+  Layer 3: Per-slide design spec — Claude selects + parameterizes blueprints
 """
 
 from generation.design_engine.palette import (

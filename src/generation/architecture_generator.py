@@ -1,34 +1,15 @@
 """Architecture diagram content generator.
 
 Takes a user's architecture requirements and reference content,
-then uses Gemini to produce structured diagram data that the
+then uses Claude to produce structured diagram data that the
 MigrationFlowRenderer (or other renderers) can consume directly.
 """
 
 from __future__ import annotations
 
 import json
-import os
-from pathlib import Path
 
-from google import genai
-from google.genai import types
-
-
-def _get_client() -> genai.Client:
-    env_path = Path(__file__).resolve().parent.parent.parent / ".env"
-    if env_path.exists():
-        for line in env_path.read_text(encoding="utf-8").splitlines():
-            line = line.strip()
-            if line and not line.startswith("#") and "=" in line:
-                k, v = line.split("=", 1)
-                os.environ.setdefault(k.strip(), v.strip())
-
-    api_key = os.environ.get("GEMINI_API_KEY", "")
-    if not api_key:
-        raise RuntimeError("GEMINI_API_KEY not set in .env or environment")
-
-    return genai.Client(api_key=api_key)
+from llm.anthropic_client import get_client, MODEL
 
 
 ARCHITECTURE_SYSTEM_PROMPT = r"""You are an expert enterprise solution architect creating architecture diagram content for client-facing consulting proposals.
@@ -130,7 +111,7 @@ def generate_architecture_diagram(
     Returns:
         Dict matching the MigrationFlowRenderer's diagram_data schema.
     """
-    client = _get_client()
+    client = get_client()
 
     parts = [user_prompt]
 
@@ -150,17 +131,14 @@ def generate_architecture_diagram(
 
     user_message = "\n".join(parts)
 
-    response = client.models.generate_content(
-        model="gemini-3.6-flash",
-        contents=user_message,
-        config=types.GenerateContentConfig(
-            system_instruction=ARCHITECTURE_SYSTEM_PROMPT,
-            temperature=0.4,
-            max_output_tokens=8000,
-        ),
+    response = client.messages.create(
+        model=MODEL,
+        max_tokens=8000,
+        system=ARCHITECTURE_SYSTEM_PROMPT,
+        messages=[{"role": "user", "content": user_message}],
     )
 
-    text = response.text.strip()
+    text = "".join(block.text for block in response.content if block.type == "text").strip()
     if text.startswith("```"):
         lines = text.split("\n")
         lines = [l for l in lines if not l.strip().startswith("```")]

@@ -149,7 +149,7 @@ def run_static():
 
 
 def run_ai():
-    print("Generating architecture diagram via Gemini...")
+    print("Generating architecture diagram via Claude...")
     from generation.architecture_generator import generate_architecture_diagram
     result = generate_architecture_diagram(USER_PROMPT)
     print("\nGenerated diagram JSON:")
@@ -178,7 +178,7 @@ def render_pptx(diagram_data: dict, suffix: str = ""):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--static", action="store_true",
-                        help="Use hardcoded data instead of calling Gemini")
+                        help="Use hardcoded data instead of calling Claude")
     args = parser.parse_args()
 
     if args.static:
