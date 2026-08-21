@@ -112,7 +112,8 @@ class ProposalSession:
             try:
                 pptx_path = output_dir / "ppt" / f"{safe_title}_{timestamp}.pptx"
                 generate_proposal_pptx(self.plan, pptx_path, template_name=template_name,
-                                       embed_images=self.embed_images if self.embed_images else None)
+                                       embed_images=self.embed_images if self.embed_images else None,
+                                       provider=self.last_provider)
                 results["pptx"] = str(pptx_path)
                 self.generated_files["pptx"] = str(pptx_path)
             except Exception as e:
