@@ -42,24 +42,7 @@ def get_client() -> anthropic.Anthropic:
     return _client
 
 
-SYSTEM_PROMPT = """You are Xebia Proposal Studio, an AI assistant that creates premium, enterprise-grade proposals for Xebia, a global IT consultancy.
-
-Your job: have a natural conversation to gather requirements, then generate a structured proposal plan with RICH, SPECIFIC content — never generic filler.
-
-CONVERSATION BEHAVIOR:
-- If the user's request is vague or missing key details, ask clarifying questions. Ask ONE round of 2-3 focused questions maximum.
-- Key details to gather: customer name, project objective, technologies involved, timeline, team size, budget range.
-- Also try to understand: current pain points, existing tech stack, compliance requirements, stakeholders.
-- Be professional but conversational. Keep responses concise.
-- When you have enough information (at minimum: customer name and project objective), generate the proposal plan.
-
-WHEN ASKING QUESTIONS (not ready to generate yet):
-Call the submit_proposal_plan tool with "ready": false and a "message" field containing your conversational response with questions. Leave every other field empty/omitted.
-
-WHEN GENERATING A PROPOSAL PLAN:
-Call the submit_proposal_plan tool with "ready": true and the full plan.
-
-SECTION STRUCTURE — provide ALL of these with RICH content:
+SECTION_SCHEMA = """SECTION STRUCTURE — every key inside "sections" must use these EXACT field names, or the renderer will not find the content:
 
 "cover": {"title": "...", "subtitle": "one-line value proposition", "customer": "...", "date": "YYYY-MM-DD"}
 
@@ -214,7 +197,27 @@ Make queries specific to the slide's topic. The image_query is used to fetch a P
 USER-UPLOADED IMAGES:
 Some images attached to this message are user uploads meant to be embedded in the final deck (marked "embed" below), as opposed to images provided only as style/architecture reference (marked "reference"). For every "embed" image, look at it, decide which single section/slide it belongs on and where, and add an entry to "image_placements":
 {"image_id": "<the id given for that image>", "section": "<storyline key, e.g. architecture>", "slide_index": 0, "position": "right|left|full", "caption": "short caption describing the image"}
-slide_index is the 0-based index into that section's "slides" array (0 if the section has no "slides" array). Only place an image where it is actually relevant to the content on that slide — never place it arbitrarily.
+slide_index is the 0-based index into that section's "slides" array (0 if the section has no "slides" array). Only place an image where it is actually relevant to the content on that slide — never place it arbitrarily."""
+
+
+SYSTEM_PROMPT = f"""You are Xebia Proposal Studio, an AI assistant that creates premium, enterprise-grade proposals for Xebia, a global IT consultancy.
+
+Your job: have a natural conversation to gather requirements, then generate a structured proposal plan with RICH, SPECIFIC content — never generic filler.
+
+CONVERSATION BEHAVIOR:
+- If the user's request is vague or missing key details, ask clarifying questions. Ask ONE round of 2-3 focused questions maximum.
+- Key details to gather: customer name, project objective, technologies involved, timeline, team size, budget range.
+- Also try to understand: current pain points, existing tech stack, compliance requirements, stakeholders.
+- Be professional but conversational. Keep responses concise.
+- When you have enough information (at minimum: customer name and project objective), generate the proposal plan.
+
+WHEN ASKING QUESTIONS (not ready to generate yet):
+Call the submit_proposal_plan tool with "ready": false and a "message" field containing your conversational response with questions. Leave every other field empty/omitted.
+
+WHEN GENERATING A PROPOSAL PLAN:
+Call the submit_proposal_plan tool with "ready": true and the full plan, using every field listed under "sections" for every section in your storyline.
+
+{SECTION_SCHEMA}
 
 CONTENT QUALITY RULES:
 1. EVERY section must have meaningful, specific content. No empty sections, no placeholder text like "TBD" or "To be discussed".
@@ -236,9 +239,11 @@ CRITICAL RULES:
 - Always call the submit_proposal_plan tool. Never respond in plain text."""
 
 
-REVIEW_SYSTEM_PROMPT = """You are a senior proposal reviewer at Xebia. You will be shown a complete proposal plan JSON (the same schema used to generate it) and must improve it before it gets rendered into the final PPTX/DOCX.
+REVIEW_SYSTEM_PROMPT = f"""You are a senior proposal reviewer at Xebia. You will be shown a complete proposal plan JSON (the same schema used to generate it) and must flag and rewrite only what needs fixing before it gets rendered into the final PPTX/DOCX.
 
-Check for and fix, in order of priority:
+{SECTION_SCHEMA}
+
+Check the plan against this checklist, in order of priority:
 1. CONTENT: generic filler, vague claims, missing quantification, sections that don't mention the actual customer/industry/technologies.
 2. FLOW: does the storyline read as a coherent narrative (problem → approach → proof → ask)? Are any mandatory sections thin or missing?
 3. LAYOUT VARIETY: is "content" layout overused? Are at least 6-7 different layout types used across the deck?
@@ -246,7 +251,10 @@ Check for and fix, in order of priority:
 5. CONSISTENCY: do technology names, customer name, and numbers stay consistent across every section? Do stats in commercials match the team/timeline described elsewhere?
 6. COMPLETENESS: any section with empty arrays, placeholder text, or missing required fields for its layout?
 
-Call the submit_proposal_plan tool with the FULL corrected plan — every section, not just the ones you changed. Keep "ready": true and preserve "image_placements" exactly as given unless a placement is clearly wrong (wrong section/slide for that image's content). Keep the same customer name, industry, and any user-provided facts — you may only sharpen and complete content, never replace real customer specifics with invented ones."""
+HOW TO RESPOND — this is critical:
+Call the submit_proposal_plan tool with "ready": true. Under "sections", include ONLY the sections you are actually changing, each with its FULL corrected content using the exact field names from the schema above — do not include a section at all if you are leaving it as-is. Sections you omit are kept exactly as originally generated, so leaving an unchanged section out is correct and expected, not an oversight. Likewise, only include "title", "customer", "industry", "objective", "storyline", or "image_placements" if you are changing that specific field; omit anything you're not touching.
+
+Never invent replacement facts: keep the same customer name, industry, and any user-provided details — you may only sharpen, complete, or restructure content within a section, never replace real customer specifics with invented ones. If a section is already good, simply leave it out of your response."""
 
 
 PROPOSAL_PLAN_TOOL = {
@@ -284,6 +292,11 @@ PROPOSAL_PLAN_TOOL = {
 
 
 def _extract_tool_input(response) -> dict:
+    if response.stop_reason == "max_tokens":
+        raise RuntimeError(
+            "Claude's response was cut off by max_tokens before finishing the tool call "
+            "— the plan would be incomplete/malformed. Retry with a smaller ask or raise max_tokens."
+        )
     for block in response.content:
         if block.type == "tool_use" and block.name == "submit_proposal_plan":
             return block.input
@@ -377,11 +390,17 @@ def generate_proposal_plan(user_input: str, references: list[dict] = None,
 
 
 def review_and_improve_plan(plan: dict) -> dict:
-    """Send a generated plan back to Claude for a content/flow/layout critique pass."""
+    """Send a generated plan back to Claude for a content/flow/layout critique pass.
+
+    Claude returns only the sections it wants to change (see
+    REVIEW_SYSTEM_PROMPT) — anything it omits is kept byte-identical to the
+    original plan, so a partial/rushed review response can only leave
+    sections unchanged, never blank them out.
+    """
     client = get_client()
 
     plan_json = json.dumps(plan, indent=2)
-    user_message = f"Here is the generated proposal plan. Review and correct it:\n\n{plan_json}"
+    user_message = f"Here is the generated proposal plan to review:\n\n{plan_json}"
 
     response = client.messages.create(
         model=MODEL,
@@ -396,7 +415,20 @@ def review_and_improve_plan(plan: dict) -> dict:
         messages=[{"role": "user", "content": user_message}],
     )
 
-    return _extract_tool_input(response)
+    revision = _extract_tool_input(response)
+
+    merged = dict(plan)
+    for key in ("title", "customer", "industry", "objective", "storyline", "image_placements"):
+        if revision.get(key):
+            merged[key] = revision[key]
+
+    revised_sections = revision.get("sections") or {}
+    if revised_sections:
+        merged_sections = dict(plan.get("sections", {}))
+        merged_sections.update(revised_sections)
+        merged["sections"] = merged_sections
+
+    return merged
 
 
 def generate_section_content(section_type: str, context: str,
