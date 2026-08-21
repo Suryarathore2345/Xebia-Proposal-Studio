@@ -33,7 +33,7 @@ OUTPUT FORMAT — return ONLY a valid JSON object with this exact structure:
         {
           "label": "Group Label (keep under 25 chars)",
           "items": ["Item 1", "Item 2", "Item 3"],
-          "style": "text|pills|flow"
+          "style": "icons|pills|flow|text"
         }
       ]
     }
@@ -66,7 +66,7 @@ zones: Array of 3-6 zones displayed left to right. Each zone represents a major 
 groups: Sub-sections within a zone.
   - label: group heading — concise domain name
   - items: 2-5 items per group. Use SHORT labels (2-4 words max). Use service names, capability names, or component names — not sentences.
-  - style: "text" (default, items as dot-separated text), "pills" (colored pill badges — use for services/tools), "flow" (left-to-right mini-flow with arrows — use for strategies/phases)
+  - style: "icons" (renders a real icon image per item for recognized technology/service names — use this for actual named products like "Azure Data Factory", "Oracle Database", "Power BI"), "pills" (colored text-only badges, no icon — use for generic/unrecognized items), "flow" (left-to-right mini-flow with arrows — use for strategies/phases), "text" (default, dot-separated text)
 
 bottom_bands: 0-2 cross-cutting bands below the zones (governance, security, monitoring).
   - color: which zone_theme color to use for the label
@@ -82,7 +82,7 @@ DESIGN RULES:
 5. Zone titles MUST be under 30 characters.
 6. Only include services/capabilities actually mentioned or clearly implied by the proposal. Never invent.
 7. Use "flow" style sparingly — only for strategy sequences (e.g. Rehost → Replatform → Refactor).
-8. Use "pills" style for technology/service listings that benefit from visual separation.
+8. Use "icons" style for technology/service listings — real product names render as actual icon images. Use "pills" only for generic items with no recognizable product icon.
 9. The outcome/value zone should be narrow (width_ratio 0.5-0.7) with high-level business outcomes.
 10. Assign colors that make architectural sense — don't repeat colors for adjacent zones.
 11. Bottom bands should only contain genuine cross-cutting concerns.

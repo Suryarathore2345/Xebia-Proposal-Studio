@@ -323,8 +323,9 @@ class MigrationFlowRenderer:
 
     def _add_tech_icon(self, x: float, y: float, size: float,
                        name: str, theme: dict):
-        icon_path = None
-        if _icon_registry:
+        from generation.slide_builders import _resolve_tech_icon
+        icon_path = _resolve_tech_icon(name)
+        if not icon_path and _icon_registry:
             icon_path = _icon_registry.get_icon(name)
 
         if icon_path and icon_path.exists():
