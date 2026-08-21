@@ -8,7 +8,7 @@ from datetime import datetime
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from retrieval.search import search_for_proposal
-from llm.anthropic_client import generate_proposal_plan, review_and_improve_plan
+from llm import anthropic_client
 from generation.pptx_generator import generate_proposal_pptx
 from generation.docx_generator import generate_proposal_docx
 
@@ -23,6 +23,7 @@ class ProposalSession:
         self.status = "chatting"
         self.generated_files: dict = {}
         self.images: list[dict] = []
+        self.last_provider: str = "claude"
 
     @property
     def reference_images(self) -> list[dict]:
@@ -32,33 +33,44 @@ class ProposalSession:
     def embed_images(self) -> list[dict]:
         return [img for img in self.images if img.get("type") == "embed"]
 
-    def chat(self, user_message: str) -> dict:
+    def chat(self, user_message: str, provider: str = "claude") -> dict:
+        if provider not in ("claude", "gemini"):
+            provider = "claude"
+
         self.history.append({"role": "user", "content": user_message})
+        self.last_provider = provider
 
         references = self._find_references(user_message)
+        common_kwargs = dict(
+            user_input=user_message,
+            references=references.get("content_references", []) if references else [],
+            conversation_history=self.history,
+            layout_references=references.get("layout_references", []) if references else [],
+            slide_references=references.get("slide_references", []) if references else [],
+        )
 
         try:
-            result = generate_proposal_plan(
-                user_input=user_message,
-                references=references.get("content_references", []) if references else [],
-                conversation_history=self.history,
-                images=self.images if self.images else None,
-                layout_references=references.get("layout_references", []) if references else [],
-                slide_references=references.get("slide_references", []) if references else [],
-            )
+            if provider == "gemini":
+                from llm import gemini_client
+                result = gemini_client.generate_proposal_plan(
+                    images=self.images if self.images else None, **common_kwargs)
+            else:
+                result = anthropic_client.generate_proposal_plan(
+                    images=self.images if self.images else None, **common_kwargs)
         except Exception as e:
             error_msg = f"I encountered an issue processing your request: {str(e)}"
             self.history.append({"role": "assistant", "content": error_msg})
             return {"ready": False, "message": error_msg}
 
         if result.get("ready"):
-            try:
-                reviewed = review_and_improve_plan(result)
-                if not reviewed.get("image_placements") and result.get("image_placements"):
-                    reviewed["image_placements"] = result["image_placements"]
-                result = reviewed
-            except Exception as e:
-                print(f"[ProposalSession] Review pass failed ({e}), using unreviewed plan")
+            if provider == "claude":
+                try:
+                    reviewed = anthropic_client.review_and_improve_plan(result)
+                    if not reviewed.get("image_placements") and result.get("image_placements"):
+                        reviewed["image_placements"] = result["image_placements"]
+                    result = reviewed
+                except Exception as e:
+                    print(f"[ProposalSession] Review pass failed ({e}), using unreviewed plan")
 
             self.plan = result
             self.status = "plan_ready"
@@ -74,6 +86,7 @@ class ProposalSession:
                     "customer": result.get("customer", ""),
                     "objective": result.get("objective", ""),
                     "sections": len(result.get("storyline", [])),
+                    "provider": provider,
                 },
             }
         else:

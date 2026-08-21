@@ -38,6 +38,7 @@ def _get_or_create_session(session_id: str | None) -> ProposalSession:
 class ChatRequest(BaseModel):
     message: str
     session_id: str | None = None
+    provider: str = "claude"  # "claude" | "gemini" — testing toggle only
 
 
 class ChatResponse(BaseModel):
@@ -75,7 +76,7 @@ async def list_templates():
 @app.post("/api/chat", response_model=ChatResponse)
 async def chat(req: ChatRequest):
     session = _get_or_create_session(req.session_id)
-    result = session.chat(req.message)
+    result = session.chat(req.message, provider=req.provider)
 
     return ChatResponse(
         session_id=session.session_id,
