@@ -28166,8 +28166,7 @@
       "svg_path": "data-engineering/processing/spark.svg",
       "official_source": "https://cdn.simpleicons.org/apachespark",
       "official_asset": false,
-      "last_verified": "2026-08-20",
-      "png_path": "data-engineering/processing/spark.png"
+      "last_verified": "2026-08-20"
     },
     {
       "id": "flink",
@@ -29797,8 +29796,8 @@
       ],
       "abbreviation": "Fab",
       "brand_color": "#117865",
-      "file_path": "microsoft/fabric/fabric_logo.png",
-      "png_path": "microsoft/fabric/fabric_logo.png",
+      "file_path": "microsoft/fabric/platform/fabric.png",
+      "png_path": "microsoft/fabric/platform/fabric.png",
       "official_source": "",
       "official_asset": false,
       "last_verified": "2026-08-20"
@@ -29821,8 +29820,8 @@
       ],
       "abbreviation": "FW",
       "brand_color": "#117865",
-      "file_path": "microsoft/fabric/workspace.png",
-      "png_path": "microsoft/fabric/workspace.png",
+      "file_path": "microsoft/fabric/platform/fabric_workspace.png",
+      "png_path": "microsoft/fabric/platform/fabric_workspace.png",
       "official_source": "",
       "official_asset": false,
       "last_verified": "2026-08-20"
@@ -29845,8 +29844,8 @@
       ],
       "abbreviation": "FC",
       "brand_color": "#117865",
-      "file_path": "microsoft/fabric/fabric.png",
-      "png_path": "microsoft/fabric/fabric.png",
+      "file_path": "microsoft/fabric/platform/fabric_capacity.png",
+      "png_path": "microsoft/fabric/platform/fabric_capacity.png",
       "official_source": "",
       "official_asset": false,
       "last_verified": "2026-08-20"
@@ -29869,8 +29868,8 @@
       ],
       "abbreviation": "FA",
       "brand_color": "#117865",
-      "file_path": "microsoft/fabric/admin.png",
-      "png_path": "microsoft/fabric/admin.png",
+      "file_path": "microsoft/fabric/platform/fabric_admin.png",
+      "png_path": "microsoft/fabric/platform/fabric_admin.png",
       "official_source": "",
       "official_asset": false,
       "last_verified": "2026-08-20"
@@ -29893,8 +29892,8 @@
       ],
       "abbreviation": "DF",
       "brand_color": "#117865",
-      "file_path": "microsoft/fabric/data_factory.png",
-      "png_path": "microsoft/fabric/data_factory.png",
+      "file_path": "microsoft/fabric/data-factory/fabric_data_factory.png",
+      "png_path": "microsoft/fabric/data-factory/fabric_data_factory.png",
       "official_source": "",
       "official_asset": false,
       "last_verified": "2026-08-20"
@@ -29917,8 +29916,8 @@
       ],
       "abbreviation": "PL",
       "brand_color": "#117865",
-      "file_path": "microsoft/fabric/pipeline.png",
-      "png_path": "microsoft/fabric/pipeline.png",
+      "file_path": "microsoft/fabric/data-factory/fabric_pipeline.png",
+      "png_path": "microsoft/fabric/data-factory/fabric_pipeline.png",
       "official_source": "",
       "official_asset": false,
       "last_verified": "2026-08-20"
@@ -29941,8 +29940,8 @@
       ],
       "abbreviation": "DG",
       "brand_color": "#117865",
-      "file_path": "microsoft/fabric/dataflow_gen2.png",
-      "png_path": "microsoft/fabric/dataflow_gen2.png",
+      "file_path": "microsoft/fabric/data-factory/fabric_dataflow_gen2.png",
+      "png_path": "microsoft/fabric/data-factory/fabric_dataflow_gen2.png",
       "official_source": "",
       "official_asset": false,
       "last_verified": "2026-08-20"
@@ -29965,8 +29964,8 @@
       ],
       "abbreviation": "OL",
       "brand_color": "#117865",
-      "file_path": "microsoft/fabric/onelake.png",
-      "png_path": "microsoft/fabric/onelake.png",
+      "file_path": "microsoft/fabric/onelake/fabric_onelake.png",
+      "png_path": "microsoft/fabric/onelake/fabric_onelake.png",
       "official_source": "",
       "official_asset": false,
       "last_verified": "2026-08-20"
@@ -29989,8 +29988,8 @@
       ],
       "abbreviation": "OH",
       "brand_color": "#117865",
-      "file_path": "microsoft/fabric/onelake_hub.png",
-      "png_path": "microsoft/fabric/onelake_hub.png",
+      "file_path": "microsoft/fabric/onelake/fabric_onelake_hub.png",
+      "png_path": "microsoft/fabric/onelake/fabric_onelake_hub.png",
       "official_source": "",
       "official_asset": false,
       "last_verified": "2026-08-20"
@@ -30013,8 +30012,8 @@
       ],
       "abbreviation": "SC",
       "brand_color": "#117865",
-      "file_path": "microsoft/fabric/shortcuts.png",
-      "png_path": "microsoft/fabric/shortcuts.png",
+      "file_path": "microsoft/fabric/onelake/fabric_shortcuts.png",
+      "png_path": "microsoft/fabric/onelake/fabric_shortcuts.png",
       "official_source": "",
       "official_asset": false,
       "last_verified": "2026-08-20"
@@ -30037,8 +30036,8 @@
       ],
       "abbreviation": "LH",
       "brand_color": "#117865",
-      "file_path": "microsoft/fabric/lakehouse.png",
-      "png_path": "microsoft/fabric/lakehouse.png",
+      "file_path": "microsoft/fabric/lakehouse/fabric_lakehouse.png",
+      "png_path": "microsoft/fabric/lakehouse/fabric_lakehouse.png",
       "official_source": "",
       "official_asset": false,
       "last_verified": "2026-08-20"
@@ -30061,8 +30060,8 @@
       ],
       "abbreviation": "DT",
       "brand_color": "#117865",
-      "file_path": "microsoft/fabric/delta_tables.png",
-      "png_path": "microsoft/fabric/delta_tables.png",
+      "file_path": "microsoft/fabric/lakehouse/fabric_delta_tables.png",
+      "png_path": "microsoft/fabric/lakehouse/fabric_delta_tables.png",
       "official_source": "",
       "official_asset": false,
       "last_verified": "2026-08-20"
@@ -30085,8 +30084,8 @@
       ],
       "abbreviation": "WH",
       "brand_color": "#117865",
-      "file_path": "microsoft/fabric/data_warehouse.png",
-      "png_path": "microsoft/fabric/data_warehouse.png",
+      "file_path": "microsoft/fabric/warehouse/fabric_warehouse.png",
+      "png_path": "microsoft/fabric/warehouse/fabric_warehouse.png",
       "official_source": "",
       "official_asset": false,
       "last_verified": "2026-08-20"
@@ -30109,8 +30108,8 @@
       ],
       "abbreviation": "SE",
       "brand_color": "#117865",
-      "file_path": "microsoft/fabric/sql_endpoint.png",
-      "png_path": "microsoft/fabric/sql_endpoint.png",
+      "file_path": "microsoft/fabric/warehouse/fabric_sql_endpoint.png",
+      "png_path": "microsoft/fabric/warehouse/fabric_sql_endpoint.png",
       "official_source": "",
       "official_asset": false,
       "last_verified": "2026-08-20"
@@ -30133,8 +30132,8 @@
       ],
       "abbreviation": "NB",
       "brand_color": "#117865",
-      "file_path": "microsoft/fabric/notebook.png",
-      "png_path": "microsoft/fabric/notebook.png",
+      "file_path": "microsoft/fabric/data-engineering/fabric_notebook.png",
+      "png_path": "microsoft/fabric/data-engineering/fabric_notebook.png",
       "official_source": "",
       "official_asset": false,
       "last_verified": "2026-08-20"
@@ -30157,8 +30156,8 @@
       ],
       "abbreviation": "SJ",
       "brand_color": "#117865",
-      "file_path": "microsoft/fabric/spark_job.png",
-      "png_path": "microsoft/fabric/spark_job.png",
+      "file_path": "microsoft/fabric/data-engineering/fabric_spark_job.png",
+      "png_path": "microsoft/fabric/data-engineering/fabric_spark_job.png",
       "official_source": "",
       "official_asset": false,
       "last_verified": "2026-08-20"
@@ -30181,8 +30180,8 @@
       ],
       "abbreviation": "EN",
       "brand_color": "#117865",
-      "file_path": "microsoft/fabric/environment.png",
-      "png_path": "microsoft/fabric/environment.png",
+      "file_path": "microsoft/fabric/data-engineering/fabric_environment.png",
+      "png_path": "microsoft/fabric/data-engineering/fabric_environment.png",
       "official_source": "",
       "official_asset": false,
       "last_verified": "2026-08-20"
@@ -30205,8 +30204,8 @@
       ],
       "abbreviation": "DS",
       "brand_color": "#117865",
-      "file_path": "microsoft/fabric/data_science.png",
-      "png_path": "microsoft/fabric/data_science.png",
+      "file_path": "microsoft/fabric/data-science/fabric_data_science.png",
+      "png_path": "microsoft/fabric/data-science/fabric_data_science.png",
       "official_source": "",
       "official_asset": false,
       "last_verified": "2026-08-20"
@@ -30229,8 +30228,8 @@
       ],
       "abbreviation": "EX",
       "brand_color": "#117865",
-      "file_path": "microsoft/fabric/experiment.png",
-      "png_path": "microsoft/fabric/experiment.png",
+      "file_path": "microsoft/fabric/data-science/fabric_experiment.png",
+      "png_path": "microsoft/fabric/data-science/fabric_experiment.png",
       "official_source": "",
       "official_asset": false,
       "last_verified": "2026-08-20"
@@ -30253,8 +30252,8 @@
       ],
       "abbreviation": "ML",
       "brand_color": "#117865",
-      "file_path": "microsoft/fabric/experiments.png",
-      "png_path": "microsoft/fabric/experiments.png",
+      "file_path": "microsoft/fabric/data-science/fabric_ml_model.png",
+      "png_path": "microsoft/fabric/data-science/fabric_ml_model.png",
       "official_source": "",
       "official_asset": false,
       "last_verified": "2026-08-20"
@@ -30277,8 +30276,8 @@
       ],
       "abbreviation": "RT",
       "brand_color": "#117865",
-      "file_path": "microsoft/fabric/rti.png",
-      "png_path": "microsoft/fabric/rti.png",
+      "file_path": "microsoft/fabric/real-time-intelligence/fabric_rti.png",
+      "png_path": "microsoft/fabric/real-time-intelligence/fabric_rti.png",
       "official_source": "",
       "official_asset": false,
       "last_verified": "2026-08-20"
@@ -30301,8 +30300,8 @@
       ],
       "abbreviation": "EH",
       "brand_color": "#117865",
-      "file_path": "microsoft/fabric/eventhouse.png",
-      "png_path": "microsoft/fabric/eventhouse.png",
+      "file_path": "microsoft/fabric/real-time-intelligence/fabric_eventhouse.png",
+      "png_path": "microsoft/fabric/real-time-intelligence/fabric_eventhouse.png",
       "official_source": "",
       "official_asset": false,
       "last_verified": "2026-08-20"
@@ -30325,8 +30324,8 @@
       ],
       "abbreviation": "ES",
       "brand_color": "#117865",
-      "file_path": "microsoft/fabric/eventstream.png",
-      "png_path": "microsoft/fabric/eventstream.png",
+      "file_path": "microsoft/fabric/real-time-intelligence/fabric_eventstream.png",
+      "png_path": "microsoft/fabric/real-time-intelligence/fabric_eventstream.png",
       "official_source": "",
       "official_asset": false,
       "last_verified": "2026-08-20"
@@ -30349,8 +30348,8 @@
       ],
       "abbreviation": "KQ",
       "brand_color": "#117865",
-      "file_path": "microsoft/fabric/kql_database.png",
-      "png_path": "microsoft/fabric/kql_database.png",
+      "file_path": "microsoft/fabric/real-time-intelligence/fabric_kql_database.png",
+      "png_path": "microsoft/fabric/real-time-intelligence/fabric_kql_database.png",
       "official_source": "",
       "official_asset": false,
       "last_verified": "2026-08-20"
@@ -30373,8 +30372,8 @@
       ],
       "abbreviation": "RD",
       "brand_color": "#117865",
-      "file_path": "microsoft/fabric/rt_dashboard.png",
-      "png_path": "microsoft/fabric/rt_dashboard.png",
+      "file_path": "microsoft/fabric/real-time-intelligence/fabric_rt_dashboard.png",
+      "png_path": "microsoft/fabric/real-time-intelligence/fabric_rt_dashboard.png",
       "official_source": "",
       "official_asset": false,
       "last_verified": "2026-08-20"
@@ -30397,8 +30396,8 @@
       ],
       "abbreviation": "RH",
       "brand_color": "#117865",
-      "file_path": "microsoft/fabric/rt_hub.png",
-      "png_path": "microsoft/fabric/rt_hub.png",
+      "file_path": "microsoft/fabric/real-time-intelligence/fabric_rt_hub.png",
+      "png_path": "microsoft/fabric/real-time-intelligence/fabric_rt_hub.png",
       "official_source": "",
       "official_asset": false,
       "last_verified": "2026-08-20"
@@ -30421,8 +30420,8 @@
       ],
       "abbreviation": "PBI",
       "brand_color": "#F2C811",
-      "file_path": "microsoft/fabric/power_bi.png",
-      "png_path": "microsoft/fabric/power_bi.png",
+      "file_path": "microsoft/fabric/power-bi/fabric_power_bi.png",
+      "png_path": "microsoft/fabric/power-bi/fabric_power_bi.png",
       "official_source": "",
       "official_asset": false,
       "last_verified": "2026-08-20"
@@ -30445,8 +30444,8 @@
       ],
       "abbreviation": "SM",
       "brand_color": "#F2C811",
-      "file_path": "microsoft/fabric/semantic_model.png",
-      "png_path": "microsoft/fabric/semantic_model.png",
+      "file_path": "microsoft/fabric/power-bi/fabric_semantic_model.png",
+      "png_path": "microsoft/fabric/power-bi/fabric_semantic_model.png",
       "official_source": "",
       "official_asset": false,
       "last_verified": "2026-08-20"
@@ -30469,8 +30468,8 @@
       ],
       "abbreviation": "RP",
       "brand_color": "#F2C811",
-      "file_path": "microsoft/fabric/report.png",
-      "png_path": "microsoft/fabric/report.png",
+      "file_path": "microsoft/fabric/power-bi/fabric_report.png",
+      "png_path": "microsoft/fabric/power-bi/fabric_report.png",
       "official_source": "",
       "official_asset": false,
       "last_verified": "2026-08-20"
@@ -30493,8 +30492,8 @@
       ],
       "abbreviation": "DB",
       "brand_color": "#F2C811",
-      "file_path": "microsoft/fabric/dashboard.png",
-      "png_path": "microsoft/fabric/dashboard.png",
+      "file_path": "microsoft/fabric/power-bi/fabric_dashboard.png",
+      "png_path": "microsoft/fabric/power-bi/fabric_dashboard.png",
       "official_source": "",
       "official_asset": false,
       "last_verified": "2026-08-20"
@@ -30517,8 +30516,8 @@
       ],
       "abbreviation": "PR",
       "brand_color": "#F2C811",
-      "file_path": "microsoft/fabric/paginated_report.png",
-      "png_path": "microsoft/fabric/paginated_report.png",
+      "file_path": "microsoft/fabric/power-bi/fabric_paginated_report.png",
+      "png_path": "microsoft/fabric/power-bi/fabric_paginated_report.png",
       "official_source": "",
       "official_asset": false,
       "last_verified": "2026-08-20"
@@ -30541,8 +30540,8 @@
       ],
       "abbreviation": "DM",
       "brand_color": "#F2C811",
-      "file_path": "microsoft/fabric/data_mart.png",
-      "png_path": "microsoft/fabric/data_mart.png",
+      "file_path": "microsoft/fabric/power-bi/fabric_data_mart.png",
+      "png_path": "microsoft/fabric/power-bi/fabric_data_mart.png",
       "official_source": "",
       "official_asset": false,
       "last_verified": "2026-08-20"
@@ -30565,8 +30564,8 @@
       ],
       "abbreviation": "DL",
       "brand_color": "#117865",
-      "file_path": "microsoft/fabric/direct_lake.png",
-      "png_path": "microsoft/fabric/direct_lake.png",
+      "file_path": "microsoft/fabric/general/fabric_direct_lake.png",
+      "png_path": "microsoft/fabric/general/fabric_direct_lake.png",
       "official_source": "",
       "official_asset": false,
       "last_verified": "2026-08-20"
@@ -30589,8 +30588,8 @@
       ],
       "abbreviation": "MR",
       "brand_color": "#117865",
-      "file_path": "microsoft/fabric/mirroring.png",
-      "png_path": "microsoft/fabric/mirroring.png",
+      "file_path": "microsoft/fabric/general/fabric_mirroring.png",
+      "png_path": "microsoft/fabric/general/fabric_mirroring.png",
       "official_source": "",
       "official_asset": false,
       "last_verified": "2026-08-20"
@@ -30613,8 +30612,8 @@
       ],
       "abbreviation": "MD",
       "brand_color": "#117865",
-      "file_path": "microsoft/fabric/mirrored_db.png",
-      "png_path": "microsoft/fabric/mirrored_db.png",
+      "file_path": "microsoft/fabric/general/fabric_mirrored_db.png",
+      "png_path": "microsoft/fabric/general/fabric_mirrored_db.png",
       "official_source": "",
       "official_asset": false,
       "last_verified": "2026-08-20"
@@ -30637,8 +30636,8 @@
       ],
       "abbreviation": "PV",
       "brand_color": "#117865",
-      "file_path": "microsoft/fabric/purview.png",
-      "png_path": "microsoft/fabric/purview.png",
+      "file_path": "microsoft/fabric/governance/fabric_purview.png",
+      "png_path": "microsoft/fabric/governance/fabric_purview.png",
       "official_source": "",
       "official_asset": false,
       "last_verified": "2026-08-20"
@@ -30661,8 +30660,8 @@
       ],
       "abbreviation": "GV",
       "brand_color": "#117865",
-      "file_path": "microsoft/fabric/governance.png",
-      "png_path": "microsoft/fabric/governance.png",
+      "file_path": "microsoft/fabric/governance/fabric_governance.png",
+      "png_path": "microsoft/fabric/governance/fabric_governance.png",
       "official_source": "",
       "official_asset": false,
       "last_verified": "2026-08-20"
@@ -30685,8 +30684,8 @@
       ],
       "abbreviation": "LN",
       "brand_color": "#117865",
-      "file_path": "microsoft/fabric/lineage.png",
-      "png_path": "microsoft/fabric/lineage.png",
+      "file_path": "microsoft/fabric/governance/fabric_lineage.png",
+      "png_path": "microsoft/fabric/governance/fabric_lineage.png",
       "official_source": "",
       "official_asset": false,
       "last_verified": "2026-08-20"
@@ -30716,88 +30715,6 @@
       "official_source": "https://raw.githubusercontent.com/marclelijveld/Power-BI-Icons/master/PNG/Power-BI.png",
       "official_asset": true,
       "last_verified": "2026-08-20"
-    },
-    {
-      "id": "fabric_exploration",
-      "technology": "Fabric Exploration",
-      "display_name": "Exploration",
-      "vendor": "Microsoft",
-      "platform": "microsoft-fabric",
-      "category": "microsoft/fabric",
-      "subcategory": "analytics",
-      "aliases": [
-        "Exploration"
-      ],
-      "abbreviation": "EXP",
-      "brand_color": "#117865",
-      "png_path": "microsoft/fabric/exploration.png",
-      "file_path": "microsoft/fabric/exploration.png"
-    },
-    {
-      "id": "fabric_copy_job",
-      "technology": "Fabric Copy Job",
-      "display_name": "Copy Job",
-      "vendor": "Microsoft",
-      "platform": "microsoft-fabric",
-      "category": "microsoft/fabric",
-      "subcategory": "data-factory",
-      "aliases": [
-        "Copy Job"
-      ],
-      "abbreviation": "CPJ",
-      "brand_color": "#117865",
-      "png_path": "microsoft/fabric/copy_job.png",
-      "file_path": "microsoft/fabric/copy_job.png"
-    },
-    {
-      "id": "fabric_streaming_dataflow",
-      "technology": "Streaming Dataflow",
-      "display_name": "Streaming Dataflow",
-      "vendor": "Microsoft",
-      "platform": "microsoft-fabric",
-      "category": "microsoft/fabric",
-      "subcategory": "real-time",
-      "aliases": [
-        "Streaming Dataflow"
-      ],
-      "abbreviation": "SDF",
-      "brand_color": "#117865",
-      "png_path": "microsoft/fabric/streaming_dataflow.png",
-      "file_path": "microsoft/fabric/streaming_dataflow.png"
-    },
-    {
-      "id": "fabric_graph_intelligence",
-      "technology": "Graph Intelligence",
-      "display_name": "Graph Intelligence",
-      "vendor": "Microsoft",
-      "platform": "microsoft-fabric",
-      "category": "microsoft/fabric",
-      "subcategory": "analytics",
-      "aliases": [
-        "Graph Intelligence",
-        "GraphQL Fabric"
-      ],
-      "abbreviation": "GI",
-      "brand_color": "#117865",
-      "png_path": "microsoft/fabric/graph_intelligence.png",
-      "file_path": "microsoft/fabric/graph_intelligence.png"
-    },
-    {
-      "id": "fabric_data_activator",
-      "technology": "Data Activator",
-      "display_name": "Data Activator",
-      "vendor": "Microsoft",
-      "platform": "microsoft-fabric",
-      "category": "microsoft/fabric",
-      "subcategory": "real-time",
-      "aliases": [
-        "Data Activator",
-        "Reflex"
-      ],
-      "abbreviation": "DA",
-      "brand_color": "#117865",
-      "png_path": "microsoft/fabric/real_time_intelligence.png",
-      "file_path": "microsoft/fabric/real_time_intelligence.png"
     }
   ]
 }
