@@ -37,6 +37,17 @@ try:
 except ImportError:
     HAS_PILLOW = False
 
+try:
+    import cairosvg
+    HAS_CAIROSVG = True
+except ImportError:
+    HAS_CAIROSVG = False
+
+# Mirror used when the primary simpleicons.org CDN is unreachable (e.g. a
+# restrictive network policy) — same open-source icon set, served from
+# GitHub instead.
+SIMPLE_ICONS_GITHUB_MIRROR = "https://raw.githubusercontent.com/simple-icons/simple-icons/develop/icons"
+
 
 # ═══════════════════════════════════════════════════════════════════
 # URL Bases
@@ -413,15 +424,27 @@ def download_thirdparty(size: int = 128) -> tuple[int, int]:
            (out_png.exists() and out_png.stat().st_size > 100):
             ok += 1
             continue
-        url = f"{SIMPLE_ICONS}/{slug}"
-        data = _download(url)
-        if data:
-            out_svg.write_bytes(data)
-            print(f"  ✓ {cid}")
-            ok += 1
-        else:
+        data = _download(f"{SIMPLE_ICONS}/{slug}")
+        if not data:
+            # Primary CDN blocked/unreachable — same open-source icon set
+            # is also mirrored on GitHub.
+            data = _download(f"{SIMPLE_ICONS_GITHUB_MIRROR}/{slug}.svg")
+
+        if not data:
             print(f"  ✗ {cid} ({slug})")
             fail += 1
+            continue
+
+        out_svg.write_bytes(data)
+        if HAS_CAIROSVG:
+            try:
+                cairosvg.svg2png(bytestring=data, write_to=str(out_png),
+                                  output_width=size, output_height=size,
+                                  background_color="white")
+            except Exception:
+                pass
+        print(f"  ✓ {cid}")
+        ok += 1
     print(f"\n  Third-party: {ok} OK, {fail} failed")
     return ok, fail
 
@@ -522,7 +545,10 @@ def build_registry():
     for slug, cid, display, cat, subcat, color in SIMPLE_ICON_ENTRIES:
         parts = cat.split("/")
         rel_dir = "/".join(parts + [subcat]) if subcat else "/".join(parts)
-        _add({
+        svg_rel = f"{rel_dir}/{cid}.svg"
+        png_rel = f"{rel_dir}/{cid}.png"
+        has_png = (ASSETS_DIR / png_rel).exists()
+        entry = {
             "id": cid,
             "technology": display,
             "display_name": display,
@@ -535,12 +561,15 @@ def build_registry():
             "keywords": [subcat or cat],
             "abbreviation": cid[:4].upper(),
             "brand_color": color,
-            "file_path": f"{rel_dir}/{cid}.svg",
-            "svg_path": f"{rel_dir}/{cid}.svg",
+            "file_path": png_rel if has_png else svg_rel,
+            "svg_path": svg_rel,
             "official_source": f"{SIMPLE_ICONS}/{slug}",
             "official_asset": False,
             "last_verified": "2026-08-20",
-        })
+        }
+        if has_png:
+            entry["png_path"] = png_rel
+        _add(entry)
 
     for eid, display, subcat, abbr, color in FABRIC_ENTRIES:
         rel = f"microsoft/fabric/{subcat}/{eid}.png"

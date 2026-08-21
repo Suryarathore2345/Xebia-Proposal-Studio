@@ -17,6 +17,10 @@ Pillow>=10.0.0
 lxml>=5.0.0
 defusedxml>=0.7.1
 
+# Icon library build (scripts/build_icon_library.py) - rasterizes
+# downloaded SVG icons to PNG
+cairosvg>=2.7.0
+
 # PDF
 PyPDF2>=3.0.0
 
