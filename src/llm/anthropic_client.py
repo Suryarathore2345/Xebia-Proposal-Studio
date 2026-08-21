@@ -87,10 +87,37 @@ SECTION_SCHEMA = """SECTION STRUCTURE — every key inside "sections" must use t
         {"name": "Layer Name", "components": ["Component1", "Component2", "Component3"], "color": "blue|teal|purple|green|orange"},
         ... (4-6 layers, top to bottom: Sources → Ingestion → Processing → Storage → Serving → Consumption)
       ]
+    },
+    {
+      "title": "e.g. End-to-End Data Flow",
+      "layout": "migration_flow",
+      "diagram": {
+        "title": "Diagram title (shown as slide title)",
+        "subtitle": "Optional one-line subtitle",
+        "zones": [
+          {
+            "id": "unique_zone_id",
+            "title": "Zone Title (under 30 chars)",
+            "color": "orange|teal|blue|purple|green|dark",
+            "width_ratio": 1.0,
+            "groups": [
+              {"label": "Group Label (under 25 chars)", "items": ["Item 1", "Item 2"], "style": "icons|pills|flow|text"}
+            ]
+          }
+        ],
+        "bottom_bands": [{"label": "Band Label", "items": ["Cross-cutting item 1", "Item 2"], "color": "purple"}],
+        "journey_labels": [{"label": "Transformation Journey Name", "from_zone_index": 0, "to_zone_index": 2}]
+      }
     }
   ]
 }
-ARCHITECTURE IS MANDATORY. Always generate a realistic, multi-layer architecture diagram with actual technology names relevant to the project. Use 4-6 layers with 2-4 components each. Choose colors from: blue, teal, purple, green, orange.
+ARCHITECTURE IS MANDATORY. Always include at least one "architecture" or "migration_flow" slide with realistic, project-specific technology names.
+
+Two layout options for architecture content — pick based on what the proposal needs:
+- "architecture": simple stacked layers, top to bottom. Good for a single clean overview. 4-6 layers, 2-4 components each, colors from blue/teal/purple/green/orange.
+- "migration_flow": a left-to-right zone diagram (3-6 zones), each with 2-5 groups of 2-5 short items. Prefer it whenever the architecture is complex enough to benefit from a visual flow. zones: color one of orange (source/current-state), teal (migration/transformation), blue (target cloud), purple (data/analytics platform), green (outcomes/value), dark (governance) — don't repeat colors on adjacent zones. width_ratio: 1.0 standard, 0.5-0.7 for a narrow outcome zone (needs at least ~1.2 width_ratio-equivalent space for "pills" or "icons" styles to render — keep those groups in normal or wide zones, not the narrowest ones). groups: "style":"icons" for real, named technologies/products (this is the ONLY style that renders an actual icon image per item — use it for Azure/AWS/Fabric services, databases, and other recognized tools, e.g. "Azure Data Factory", "Oracle Database", "Power BI"); "pills" for short text badges with no icon (generic/non-recognized items); "flow" only for a strategy sequence (e.g. Rehost → Replatform → Refactor); "text" otherwise. Item labels: 2-4 words, no sentences. bottom_bands (0-2) for cross-cutting concerns (governance, security, monitoring). journey_labels (0-2) to call out the 1-2 major transformation stories.
+
+For a data platform / migration proposal, generate 2-3 DISTINCT migration_flow diagrams that each earn their place — e.g. "Current-State Architecture" (today's fragmented/legacy setup), "Target Architecture" or "End-to-End Data Flow" (the proposed platform, source to consumption), and optionally a third focused view (e.g. medallion/lakehouse layers, or the analytics/consumption layer) — never repeat the same zones/content across multiple diagrams. For a smaller or simpler proposal, one "architecture" slide is enough — don't pad with diagrams that don't add information.
 
 "technology_stack": {
   "title": "Technology Stack",
@@ -180,6 +207,7 @@ AVAILABLE SLIDE LAYOUTS (choose the best one for each piece of content):
 - "stats_highlight": large KPI numbers. For impact metrics. Needs "stats": [{"value", "label"}].
 - "key_value": left-right pairs. For project details, case studies. Needs "pairs": [{"key", "value"}].
 - "architecture": multi-layer diagram with component boxes. For solution architecture. Needs "layers": [{"name", "components", "color"}].
+- "migration_flow": left-to-right multi-zone architecture diagram with real technology icons. For richer/multiple architecture views. Needs "diagram": {"title", "zones": [...], "bottom_bands", "journey_labels"} — see the architecture section schema above for the full shape.
 - "technology": tech cards with categories. For tech stack. Needs "technologies": [{"name", "category", "description"}].
 - "challenges": 3-column challenge/impact/solution. For risks, challenges. Needs "challenges": [{"challenge", "impact", "solution"}].
 - "timeline": phase bars (timeline sections only). Needs "phases".
