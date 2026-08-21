@@ -214,8 +214,15 @@ SIMPLE_ICON_ENTRIES: list[tuple[str, str, str, str, str, str]] = [
 
 
 # ═══════════════════════════════════════════════════════════════════
-# Microsoft Fabric — fallback entries (no official icon pack yet)
+# Microsoft Fabric
 # (id, display_name, subcategory, abbreviation, brand_color)
+#
+# Real icons come from Microsoft's own @fabric-msft/svg-icons package
+# (MIT licensed), published for Fabric platform extension development:
+# https://github.com/microsoft/fabric-samples/blob/main/docs-samples/Icons.zip
+# See FABRIC_ICON_SOURCE below for the id -> source-icon mapping. Any id
+# without a source entry has no matching icon in that package and falls
+# back to a text abbreviation.
 # ═══════════════════════════════════════════════════════════════════
 
 FABRIC_ENTRIES: list[tuple[str, str, str, str, str]] = [
@@ -258,6 +265,126 @@ FABRIC_ENTRIES: list[tuple[str, str, str, str, str]] = [
     ("fabric_governance", "Governance", "governance", "GV", "#117865"),
     ("fabric_lineage", "Data Lineage", "governance", "LN", "#117865"),
 ]
+
+FABRIC_ICONS_ZIP = "https://raw.githubusercontent.com/microsoft/fabric-samples/main/docs-samples/Icons.zip"
+
+# FABRIC_ENTRIES id -> exact icon name (without size/style suffix) in the
+# @fabric-msft/svg-icons package. Preferred size/style is picked at
+# download time (color > item > filled > regular, largest usable size).
+# Ids not listed here have no matching icon in the package.
+FABRIC_ICON_SOURCE: dict[str, str] = {
+    "fabric": "fabric",
+    "fabric_workspace": "group_workspace",
+    "fabric_capacity": "fabric",
+    "fabric_admin": "fabric",
+    "fabric_data_factory": "data_factory",
+    "fabric_pipeline": "pipeline",
+    "fabric_dataflow_gen2": "dataflow",
+    "fabric_onelake": "one_lake",
+    "fabric_onelake_hub": "one_lake",
+    "fabric_lakehouse": "lakehouse",
+    "fabric_warehouse": "data_warehouse",
+    "fabric_sql_endpoint": "cloud_endpoint",
+    "fabric_notebook": "notebook",
+    "fabric_spark_job": "notebook_code",
+    "fabric_environment": "environment",
+    "fabric_data_science": "data_science",
+    "fabric_experiment": "experiments",
+    "fabric_ml_model": "model",
+    "fabric_rti": "real_time_intelligence",
+    "fabric_eventhouse": "event_house",
+    "fabric_eventstream": "eventstream",
+    "fabric_kql_database": "database_kql",
+    "fabric_rt_dashboard": "real_time_dashboard",
+    "fabric_power_bi": "power_bi",
+    "fabric_semantic_model": "semantic_model",
+    "fabric_report": "report",
+    "fabric_dashboard": "dashboard",
+    "fabric_paginated_report": "paginated_report",
+    "fabric_data_mart": "data_warehouse",
+    "fabric_direct_lake": "lakehouse",
+    "fabric_mirroring": "mirrored_generic_database",
+    "fabric_mirrored_db": "mirrored_generic_database",
+    "fabric_purview": "purview",
+    "fabric_governance": "purview",
+    "fabric_lineage": "runtime_lineage",
+    # Not in the package: fabric_shortcuts, fabric_delta_tables, fabric_rt_hub
+}
+
+# Extra real-world phrasings, on top of each entry's own display_name.
+FABRIC_EXTRA_ALIASES: dict[str, list[str]] = {
+    "fabric_warehouse": ["Fabric Data Warehouse", "Data Warehouse (Fabric)", "Gold Layer"],
+    "fabric_lakehouse": ["Bronze Layer", "Silver Layer"],
+    "fabric_data_factory": ["Azure Data Factory (Fabric)", "ADF (Fabric)"],
+    "fabric_power_bi": ["PowerBI"],
+    "fabric_kql_database": ["KQL DB"],
+    "fabric_eventhouse": ["Event House"],
+}
+
+_FABRIC_STYLE_PRIORITY = ["color", "item", "filled", "regular", "non-item"]
+_FABRIC_SIZE_PRIORITY = [32, 24, 40, 20, 48, 28, 16, 64]
+
+
+def download_fabric_icons() -> tuple[int, int]:
+    """Fetch Microsoft's official Fabric icon package and copy the icons
+    FABRIC_ICON_SOURCE maps to into assets/icons/microsoft/fabric/."""
+    import io
+    import shutil
+    import tempfile
+    import zipfile
+
+    print("\n" + "=" * 60)
+    print("DOWNLOADING MICROSOFT FABRIC ICONS")
+    print("=" * 60)
+
+    data = _download(FABRIC_ICONS_ZIP)
+    if not data:
+        print("  ✗ could not download Icons.zip")
+        return 0, len(FABRIC_ICON_SOURCE)
+
+    with tempfile.TemporaryDirectory() as tmp:
+        tmp_path = Path(tmp)
+        with zipfile.ZipFile(io.BytesIO(data)) as zf:
+            zf.extractall(tmp_path)
+
+        svg_dirs = list(tmp_path.glob("**/dist/svg"))
+        if not svg_dirs:
+            print("  ✗ unexpected package layout — no dist/svg/ found")
+            return 0, len(FABRIC_ICON_SOURCE)
+        svg_dir = svg_dirs[0]
+        png_dir = svg_dir.parent / "png"
+        available = {f.stem for f in svg_dir.glob("*.svg")}
+
+        by_id = {eid: (subcat) for eid, _, subcat, _, _ in FABRIC_ENTRIES}
+        ok = fail = 0
+        for eid, base_name in FABRIC_ICON_SOURCE.items():
+            subcat = by_id.get(eid, "general")
+            match = None
+            for size in _FABRIC_SIZE_PRIORITY:
+                for style in _FABRIC_STYLE_PRIORITY:
+                    candidate = f"{base_name}_{size}_{style}"
+                    if candidate in available:
+                        match = candidate
+                        break
+                if match:
+                    break
+
+            if not match:
+                print(f"  ✗ {eid} (no source match for '{base_name}')")
+                fail += 1
+                continue
+
+            dest_dir = ASSETS_DIR / "microsoft" / "fabric" / subcat
+            dest_dir.mkdir(parents=True, exist_ok=True)
+            shutil.copy(svg_dir / f"{match}.svg", dest_dir / f"{eid}.svg")
+            png_src = png_dir / f"{match}.png"
+            if png_src.exists():
+                shutil.copy(png_src, dest_dir / f"{eid}.png")
+            print(f"  ✓ {eid} <- {match}")
+            ok += 1
+
+    print(f"\n  Fabric: {ok} OK, {fail} failed")
+    return ok, fail
 
 
 # ═══════════════════════════════════════════════════════════════════
@@ -582,7 +709,7 @@ def build_registry():
             "category": "microsoft/fabric",
             "subcategory": subcat,
             "service_type": "cloud",
-            "aliases": [display],
+            "aliases": [display] + FABRIC_EXTRA_ALIASES.get(eid, []),
             "keywords": ["fabric", subcat],
             "abbreviation": abbr,
             "brand_color": color,
@@ -748,7 +875,7 @@ def completeness_report():
 
 def main():
     parser = argparse.ArgumentParser(description="Build the technology icon library")
-    parser.add_argument("--category", choices=["aws", "azure", "thirdparty", "pbi"])
+    parser.add_argument("--category", choices=["aws", "azure", "thirdparty", "pbi", "fabric"])
     parser.add_argument("--report", action="store_true")
     parser.add_argument("--validate", action="store_true")
     parser.add_argument("--registry-only", action="store_true")
@@ -769,7 +896,7 @@ def main():
     start = time.time()
     total_ok = total_fail = 0
 
-    cats = [args.category] if args.category else ["aws", "azure", "thirdparty", "pbi"]
+    cats = [args.category] if args.category else ["aws", "azure", "thirdparty", "pbi", "fabric"]
     for cat in cats:
         if cat == "aws":
             ok, fail = download_aws(args.size)
@@ -779,6 +906,8 @@ def main():
             ok, fail = download_thirdparty(args.size)
         elif cat == "pbi":
             ok, fail = download_pbi(args.size)
+        elif cat == "fabric":
+            ok, fail = download_fabric_icons()
         else:
             continue
         total_ok += ok
