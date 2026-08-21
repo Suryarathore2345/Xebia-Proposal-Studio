@@ -33,16 +33,26 @@ def _load_env():
 
 
 def _get_clients() -> list:
-    """Return Gemini clients in priority order (key 1 first, key 2 as failover)."""
+    """Return Gemini clients in priority order — as many GEMINI_API_KEY_N
+    (or a bare GEMINI_API_KEY as key 1) as are set, tried in order on
+    rate-limit/quota failure."""
     global _clients
     if _clients:
         return _clients
 
     _load_env()
-    keys = [os.environ.get("GEMINI_API_KEY_1", ""), os.environ.get("GEMINI_API_KEY_2", "")]
+    keys = [os.environ.get("GEMINI_API_KEY_1", "") or os.environ.get("GEMINI_API_KEY", "")]
+    n = 2
+    while True:
+        key = os.environ.get(f"GEMINI_API_KEY_{n}", "")
+        if not key:
+            break
+        keys.append(key)
+        n += 1
     keys = [k for k in keys if k]
+
     if not keys:
-        raise RuntimeError("No GEMINI_API_KEY_1 / GEMINI_API_KEY_2 set in .env or environment")
+        raise RuntimeError("No GEMINI_API_KEY / GEMINI_API_KEY_1..N set in .env or environment")
 
     _clients = [genai.Client(api_key=k) for k in keys]
     return _clients
