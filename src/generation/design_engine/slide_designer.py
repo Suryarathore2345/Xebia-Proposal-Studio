@@ -118,25 +118,28 @@ Return ONLY valid JSON array (no markdown fences):
 Array MUST have exactly {slide_count} entries, one per slide in the manifest."""
 
 
-def design_slides(plan: dict, theme: DesignTheme) -> list[SlideDesignSpec]:
-    """Select blueprints for all slides via Claude, with fallback."""
+def design_slides(plan: dict, theme: DesignTheme, provider: str = "claude") -> list[SlideDesignSpec]:
+    """Select blueprints for all slides, with a rule-based fallback."""
     manifest = build_slide_manifest(plan)
 
     try:
-        specs = _claude_design(manifest, theme)
+        specs = _llm_design(manifest, theme, provider)
         if len(specs) == len(manifest):
             specs = enforce_variety(specs, manifest)
             return specs
         print(f"[SlideDesigner] Count mismatch ({len(specs)} vs {len(manifest)}), using fallback")
     except Exception as e:
-        print(f"[SlideDesigner] Claude failed ({e}), using rule-based fallback")
+        print(f"[SlideDesigner] {provider} failed ({e}), using rule-based fallback")
 
     return _rule_based_design(manifest, theme)
 
 
-def _claude_design(manifest: list[dict], theme: DesignTheme) -> list[SlideDesignSpec]:
-    """Call Claude to select blueprints."""
-    from llm.anthropic_client import get_client, MODEL
+def _llm_design(manifest: list[dict], theme: DesignTheme, provider: str = "claude") -> list[SlideDesignSpec]:
+    """Call the LLM to select blueprints."""
+    if provider == "gemini":
+        from llm.gemini_client import generate_text
+    else:
+        from llm.anthropic_client import generate_text
 
     manifest_text = "\n".join(
         f"  {i+1}. [{s['type']}] \"{s['title']}\" (id: {s['id']})"
@@ -158,14 +161,7 @@ def _claude_design(manifest: list[dict], theme: DesignTheme) -> list[SlideDesign
         slide_count=len(manifest),
     )
 
-    client = get_client()
-    response = client.messages.create(
-        model=MODEL,
-        max_tokens=4000,
-        messages=[{"role": "user", "content": prompt}],
-    )
-
-    text = "".join(block.text for block in response.content if block.type == "text").strip()
+    text = generate_text(prompt, max_tokens=4000).strip()
     if text.startswith("```"):
         lines = text.split("\n")
         lines = [l for l in lines if not l.strip().startswith("```")]

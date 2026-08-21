@@ -1,4 +1,5 @@
-"""Design theme generator — proposal-level visual strategy via Claude.
+"""Design theme generator — proposal-level visual strategy (Claude by
+default, or Gemini when the testing toggle selects it).
 
 Generates a DesignTheme once per deck that controls which purple shades
 to emphasize, background distribution, typography, and card styling.
@@ -13,7 +14,6 @@ from generation.design_engine.palette import (
     PURPLE, NEUTRALS, GRADIENTS, GradientDef,
     ACCENT_CYCLE_DEEP, ACCENT_CYCLE_SOFT, ACCENT_CYCLE_MIXED,
 )
-from llm.anthropic_client import get_client, MODEL
 
 
 @dataclass
@@ -126,8 +126,8 @@ accent_cycle is 5 purple shades to rotate through for visual variety.
 All hex values MUST come from the approved lists above."""
 
 
-def generate_theme(plan: dict) -> DesignTheme:
-    """Generate a unique design theme for this proposal via Claude."""
+def generate_theme(plan: dict, provider: str = "claude") -> DesignTheme:
+    """Generate a unique design theme for this proposal."""
     title = plan.get("title", "Proposal")
     customer = plan.get("customer", "Client")
     industry = plan.get("industry", "technology")
@@ -144,16 +144,14 @@ def generate_theme(plan: dict) -> DesignTheme:
     )
 
     try:
-        client = get_client()
-        response = client.messages.create(
-            model=MODEL,
-            max_tokens=2000,
-            messages=[{"role": "user", "content": prompt}],
-        )
-        text = "".join(block.text for block in response.content if block.type == "text")
+        if provider == "gemini":
+            from llm.gemini_client import generate_text
+        else:
+            from llm.anthropic_client import generate_text
+        text = generate_text(prompt, max_tokens=2000)
         return _parse_theme(text)
     except Exception as e:
-        print(f"[ThemeGenerator] Claude failed ({e}), using fallback")
+        print(f"[ThemeGenerator] {provider} failed ({e}), using fallback")
         return _fallback_theme(industry)
 
 

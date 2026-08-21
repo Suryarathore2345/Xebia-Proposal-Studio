@@ -88,9 +88,10 @@ class ProposalPPTGenerator:
     """Generates a complete Xebia-branded PPTX with blueprint-driven design."""
 
     def __init__(self, plan: dict, template_name: str | None = None,
-                 embed_images: list[dict] = None):
+                 embed_images: list[dict] = None, provider: str = "claude"):
         self.plan = plan
         self.embed_images = embed_images or []
+        self.provider = provider
 
         self._embed_image_paths = {
             img["id"]: img["path"] for img in self.embed_images
@@ -105,16 +106,16 @@ class ProposalPPTGenerator:
         self.template_info = tpl
         print(f"[PPTGenerator] Template: {tpl['name']} ({tpl['family']})")
 
-        print("[PPTGenerator] Generating design theme...")
-        self.theme = generate_theme(plan)
+        print(f"[PPTGenerator] Generating design theme via {provider}...")
+        self.theme = generate_theme(plan, provider=provider)
         print(f"[PPTGenerator] Theme: {self.theme.theme_name}")
         print(f"[PPTGenerator] Fonts: {self.theme.heading_font}/{self.theme.body_font}, "
               f"card_style={self.theme.card_style}")
         if self.theme.rationale:
             print(f"[PPTGenerator] Rationale: {self.theme.rationale}")
 
-        print("[PPTGenerator] Selecting slide blueprints...")
-        self.specs = design_slides(plan, self.theme)
+        print(f"[PPTGenerator] Selecting slide blueprints via {provider}...")
+        self.specs = design_slides(plan, self.theme, provider=provider)
         bp_ids = [s.blueprint_id for s in self.specs]
         unique = len(set(bp_ids))
         print(f"[PPTGenerator] {len(self.specs)} slides, {unique} unique blueprints")
@@ -420,10 +421,11 @@ class ProposalPPTGenerator:
 
 def generate_proposal_pptx(plan: dict, output_path: str | Path,
                            template_name: str | None = None,
-                           embed_images: list[dict] = None) -> Path:
+                           embed_images: list[dict] = None,
+                           provider: str = "claude") -> Path:
     """Convenience function to generate a PPTX from a plan dict."""
     generator = ProposalPPTGenerator(plan, template_name=template_name,
-                                     embed_images=embed_images)
+                                     embed_images=embed_images, provider=provider)
     return generator.generate(output_path)
 
 
