@@ -9,6 +9,9 @@ pydantic>=2.0.0
 # LLM (Claude Sonnet 5)
 anthropic>=0.40.0
 
+# LLM (Gemini) - testing toggle only, see src/llm/gemini_client.py
+google-genai>=0.3.0
+
 # Document processing
 python-pptx>=1.0.0
 python-docx>=1.1.0
