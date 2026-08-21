@@ -80,13 +80,19 @@ def _call_with_failover(**kwargs):
 
 
 def generate_text(prompt: str, max_tokens: int = 2000) -> str:
-    """Plain text completion — used by the design engine (theme/blueprint
+    """JSON text completion — used by the design engine (theme/blueprint
     selection) when the chat toggle is set to Gemini, so those calls stay
-    consistent with the provider chosen for the main content."""
+    consistent with the provider chosen for the main content. Every caller
+    of this helper expects JSON back, so response_mime_type is forced —
+    without it Gemini's plain-text completion was prone to truncating
+    mid-string before finishing the JSON object."""
     response = _call_with_failover(
         model=MODEL,
         contents=prompt,
-        config=types.GenerateContentConfig(max_output_tokens=max_tokens),
+        config=types.GenerateContentConfig(
+            max_output_tokens=max_tokens,
+            response_mime_type="application/json",
+        ),
     )
     return response.text
 
