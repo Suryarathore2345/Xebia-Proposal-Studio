@@ -472,6 +472,27 @@ class ProposalDOCXGenerator:
                 run.font.bold = True
                 p.add_run(", ".join(layer.get("components", [])))
 
+        if data.get("diagram"):
+            diagram = data["diagram"]
+            if diagram.get("subtitle"):
+                sub = self.doc.add_paragraph()
+                sub.add_run(diagram["subtitle"]).italic = True
+            for zone in diagram.get("zones", []):
+                p = self.doc.add_paragraph(style="List Bullet")
+                run = p.add_run(f"{zone.get('title', '')}: ")
+                run.font.bold = True
+                group_texts = []
+                for group in zone.get("groups", []):
+                    items = ", ".join(group.get("items", []))
+                    label = group.get("label", "")
+                    group_texts.append(f"{label} ({items})" if label else items)
+                p.add_run("; ".join(group_texts))
+            for band in diagram.get("bottom_bands", []):
+                p = self.doc.add_paragraph(style="List Bullet")
+                run = p.add_run(f"{band.get('label', '')}: ")
+                run.font.bold = True
+                p.add_run(", ".join(band.get("items", [])))
+
         if data.get("technologies"):
             table = self.doc.add_table(rows=len(data["technologies"]) + 1, cols=3)
             table.style = "Table Grid"
