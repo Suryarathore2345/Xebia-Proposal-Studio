@@ -7,7 +7,7 @@ palette/style dataclasses those modules and `pptx_generator.py` pass
 around.
 """
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 
 @dataclass
@@ -24,6 +24,29 @@ class DesignPalette:
     text_dark: str
     text_medium: str
     text_light: str
+
+
+@dataclass
+class SlideVisual:
+    slide_id: str
+    composition: str        # bold_header | dark_full | clean | top_bar | left_bar | bottom_band | none
+    accent_color: str       # hex from palette
+
+
+@dataclass
+class ProposalDesignSystem:
+    """Legacy per-proposal design container, kept as a plain data holder.
+
+    create_presentation() accepts one for its type signature but doesn't
+    read its fields — actual theme/blueprint decisions now live in
+    generation/design_engine/ (theme_generator.py, slide_designer.py).
+    """
+    palette: DesignPalette
+    heading_font: str
+    body_font: str
+    card_style: str         # accent_top | rounded_shadow | flat_bordered | outlined | minimal
+    slide_visuals: list[SlideVisual] = field(default_factory=list)
+    rationale: str = ""
 
 
 @dataclass
