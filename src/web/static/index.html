@@ -1174,6 +1174,7 @@ let sessionId = null;
 let isLoading = false;
 let planReady = false;
 let selectedTemplate = null;
+let selectedFormats = 'both';
 let pendingImages = [];
 let templates = [];
 
@@ -1299,13 +1300,20 @@ function showPlanCard(contentDiv, summary) {
       <div class="plan-meta-item"><span>Title</span>${escapeHtml(summary.title)}</div>
       <div class="plan-meta-item"><span>Customer</span>${escapeHtml(summary.customer)}</div>
       <div class="plan-meta-item"><span>Sections</span>${summary.sections} sections</div>
-      <div class="plan-meta-item"><span>Formats</span>PPTX + DOCX</div>
     </div>
     <div class="plan-template-select">
       <label>Template</label>
       <select id="planTemplateSelect" onchange="selectedTemplate = this.value">
         <option value="">Auto (random)</option>
         ${templateOptions}
+      </select>
+    </div>
+    <div class="plan-template-select">
+      <label>Generate</label>
+      <select id="planFormatSelect" onchange="selectedFormats = this.value">
+        <option value="both" selected>PowerPoint + Word</option>
+        <option value="pptx">PowerPoint only</option>
+        <option value="docx">Word only</option>
       </select>
     </div>
     <button class="btn-generate" onclick="generateProposal()">
@@ -1407,7 +1415,7 @@ async function generateProposal() {
     const res = await fetch(`/api/generate/${sessionId}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ template_name: selectedTemplate || null }),
+      body: JSON.stringify({ template_name: selectedTemplate || null, formats: selectedFormats }),
     });
     clearInterval(stepInterval);
 
@@ -1491,6 +1499,7 @@ async function resetChat() {
 
   planReady = false;
   selectedTemplate = null;
+  selectedFormats = 'both';
   pendingImages = [];
   renderImagePreviews();
   document.getElementById('messages').innerHTML = `

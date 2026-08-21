@@ -81,9 +81,12 @@ class ProposalSession:
             self.history.append({"role": "assistant", "content": msg})
             return {"ready": False, "message": msg}
 
-    def generate(self, template_name: str | None = None) -> dict:
+    def generate(self, template_name: str | None = None, formats: str = "both") -> dict:
         if not self.plan:
             return {"error": "No proposal plan ready. Keep chatting to build one."}
+
+        if formats not in ("pptx", "docx", "both"):
+            return {"error": "formats must be one of 'pptx', 'docx', 'both'"}
 
         self.status = "generating"
         output_dir = Path(__file__).resolve().parent.parent.parent / "outputs"
@@ -92,14 +95,19 @@ class ProposalSession:
 
         results = {}
 
-        try:
-            pptx_path = output_dir / "ppt" / f"{safe_title}_{timestamp}.pptx"
-            generate_proposal_pptx(self.plan, pptx_path, template_name=template_name,
-                                   embed_images=self.embed_images if self.embed_images else None)
-            results["pptx"] = str(pptx_path)
-            self.generated_files["pptx"] = str(pptx_path)
-        except Exception as e:
-            results["pptx_error"] = str(e)
+        if formats in ("pptx", "both"):
+            try:
+                pptx_path = output_dir / "ppt" / f"{safe_title}_{timestamp}.pptx"
+                generate_proposal_pptx(self.plan, pptx_path, template_name=template_name,
+                                       embed_images=self.embed_images if self.embed_images else None)
+                results["pptx"] = str(pptx_path)
+                self.generated_files["pptx"] = str(pptx_path)
+            except Exception as e:
+                results["pptx_error"] = str(e)
+
+        if formats not in ("docx", "both"):
+            self.status = "complete"
+            return results
 
         try:
             docx_path = output_dir / "docx" / f"{safe_title}_{timestamp}.docx"

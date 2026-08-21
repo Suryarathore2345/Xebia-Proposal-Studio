@@ -49,6 +49,7 @@ class ChatResponse(BaseModel):
 
 class GenerateRequest(BaseModel):
     template_name: str | None = None
+    formats: str = "both"  # "pptx" | "docx" | "both"
 
 
 class GenerateResponse(BaseModel):
@@ -96,7 +97,11 @@ async def generate(session_id: str, req: GenerateRequest = None):
         raise HTTPException(400, "No proposal plan ready for generation")
 
     template_name = req.template_name if req else None
-    result = session.generate(template_name=template_name)
+    formats = req.formats if req else "both"
+    if formats not in ("pptx", "docx", "both"):
+        raise HTTPException(400, "formats must be one of 'pptx', 'docx', 'both'")
+
+    result = session.generate(template_name=template_name, formats=formats)
     return GenerateResponse(session_id=session_id, files=result)
 
 
