@@ -462,6 +462,19 @@ def review_and_improve_plan(plan: dict) -> dict:
     return merged
 
 
+def generate_text(prompt: str, max_tokens: int = 2000) -> str:
+    """Plain text completion — used by the design engine (theme/blueprint
+    selection) so it can be driven by whichever provider the chat toggle
+    picked, not hardcoded to Claude."""
+    client = get_client()
+    response = client.messages.create(
+        model=MODEL,
+        max_tokens=max_tokens,
+        messages=[{"role": "user", "content": prompt}],
+    )
+    return "".join(block.text for block in response.content if block.type == "text")
+
+
 def generate_section_content(section_type: str, context: str,
                               references: list[dict] = None) -> dict:
     """Generate content for a single proposal section."""

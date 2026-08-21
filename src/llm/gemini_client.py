@@ -79,6 +79,18 @@ def _call_with_failover(**kwargs):
     raise last_err
 
 
+def generate_text(prompt: str, max_tokens: int = 2000) -> str:
+    """Plain text completion — used by the design engine (theme/blueprint
+    selection) when the chat toggle is set to Gemini, so those calls stay
+    consistent with the provider chosen for the main content."""
+    response = _call_with_failover(
+        model=MODEL,
+        contents=prompt,
+        config=types.GenerateContentConfig(max_output_tokens=max_tokens),
+    )
+    return response.text
+
+
 SYSTEM_PROMPT = f"""You are Xebia Proposal Studio, an AI assistant that creates premium, enterprise-grade proposals for Xebia, a global IT consultancy.
 
 Your job: have a natural conversation to gather requirements, then generate a structured proposal plan with RICH, SPECIFIC content — never generic filler.
