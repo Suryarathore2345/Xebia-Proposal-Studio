@@ -105,7 +105,17 @@ WHEN ASKING QUESTIONS (not ready to generate yet):
 Return a JSON object: {{"ready": false, "message": "Your conversational response here with questions"}}
 
 WHEN GENERATING A PROPOSAL PLAN:
-Return ONLY a JSON object (no markdown, no code fences) with "ready": true and the full plan, using every field below for every section in your storyline.
+Return ONLY a JSON object (no markdown, no code fences) with "ready": true and the full plan. The top level of that object MUST include ALL of these keys, every single time — never omit any of them:
+{{
+  "ready": true,
+  "title": "Proposal title",
+  "customer": "Customer name",
+  "industry": "Customer's industry",
+  "objective": "One-line objective",
+  "storyline": ["cover", "executive_summary", "corporate_overview", "understanding_of_scope", "proposed_solution", "architecture", "technology_stack", "delivery_approach", "timeline", "team_structure", "commercials", "risk_mitigation", "case_studies", "next_steps", "closing"],
+  "sections": {{ ... one entry per storyline item, schema below ... }}
+}}
+"storyline" is the array of section keys, in the order they should appear — pick the ones relevant to this proposal from the list above, do not invent new ones. Every key in "sections" must have a matching entry in "storyline".
 
 {SECTION_SCHEMA}
 
@@ -175,6 +185,7 @@ def generate_proposal_plan(user_input: str, references: list[dict] = None,
             system_instruction=SYSTEM_PROMPT,
             temperature=0.7,
             max_output_tokens=16000,
+            response_mime_type="application/json",
         ),
     )
 
@@ -183,4 +194,32 @@ def generate_proposal_plan(user_input: str, references: list[dict] = None,
         lines = [l for l in text.split("\n") if not l.strip().startswith("```")]
         text = "\n".join(lines)
 
-    return json.loads(text)
+    result = json.loads(text)
+    return _fill_missing_top_level(result)
+
+
+def _fill_missing_top_level(result: dict) -> dict:
+    """Gemini (unlike Claude's forced tool-use) sometimes returns "sections"
+    without the required top-level fields alongside it. Derive them from
+    the section contents rather than silently generating an empty-looking
+    plan."""
+    if not result.get("ready"):
+        return result
+
+    sections = result.get("sections", {})
+
+    if not result.get("storyline"):
+        result["storyline"] = list(sections.keys())
+
+    cover = sections.get("cover", {})
+    if not result.get("title"):
+        result["title"] = cover.get("title") or "Untitled Proposal"
+    if not result.get("customer"):
+        result["customer"] = cover.get("customer") or "Client"
+    if not result.get("objective"):
+        exec_summary = sections.get("executive_summary", {})
+        result["objective"] = cover.get("subtitle") or exec_summary.get("summary", "")[:150]
+    if not result.get("industry"):
+        result["industry"] = "technology"
+
+    return result
