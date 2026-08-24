@@ -12,6 +12,27 @@ from llm import anthropic_client
 from generation.pptx_generator import generate_proposal_pptx
 from generation.docx_generator import generate_proposal_docx
 
+MIN_SECTIONS_FOR_TOC = 10
+
+
+def _ensure_table_of_contents(plan: dict) -> dict:
+    """Insert a table_of_contents entry right after "cover" whenever the
+    plan has enough sections to need one. Handled here in code rather than
+    left purely to the prompt — the model doesn't reliably follow the
+    "include for >10 sections" instruction on its own (observed both
+    providers skip it even at 16 sections), so this makes it deterministic."""
+    storyline = plan.get("storyline") or []
+    if "table_of_contents" in storyline or len(storyline) < MIN_SECTIONS_FOR_TOC:
+        return plan
+
+    insert_at = 1 if storyline and storyline[0] == "cover" else 0
+    storyline = list(storyline)
+    storyline.insert(insert_at, "table_of_contents")
+    plan["storyline"] = storyline
+    plan.setdefault("sections", {}).setdefault(
+        "table_of_contents", {"title": "Table of Contents"})
+    return plan
+
 
 class ProposalSession:
     """Manages a single proposal conversation session."""
@@ -72,6 +93,7 @@ class ProposalSession:
                 except Exception as e:
                     print(f"[ProposalSession] Review pass failed ({e}), using unreviewed plan")
 
+            result = _ensure_table_of_contents(result)
             self.plan = result
             self.status = "plan_ready"
             self.history.append({
