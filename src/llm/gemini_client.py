@@ -10,6 +10,7 @@ fills it in.
 
 import os
 import json
+from datetime import date
 from pathlib import Path
 
 from google import genai
@@ -173,7 +174,9 @@ def generate_proposal_plan(user_input: str, references: list[dict] = None,
         msgs = [f"{m.get('role', 'user')}: {m.get('content', '')}" for m in conversation_history[-10:]]
         conv_context = "\n\nConversation so far:\n" + "\n".join(msgs)
 
-    user_message = user_input + ref_context + layout_context + slide_context + conv_context
+    date_context = f"\n\n[Today's date: {date.today().isoformat()}. Use this for the cover date unless the user specifies otherwise.]"
+
+    user_message = user_input + ref_context + layout_context + slide_context + conv_context + date_context
 
     contents = []
     if images:
