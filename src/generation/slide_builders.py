@@ -63,7 +63,14 @@ def create_presentation(ds: ProposalDesignSystem, template_path: str | None = No
     if template_path is None:
         from generation.template_engine import generate_theme
         template_path = generate_theme()
-    return create_themed_presentation(template_path)
+    prs = create_themed_presentation(template_path)
+    # Remove all existing slides from the template — keep only slide masters/layouts
+    while len(prs.slides) > 0:
+        rId = prs.slides._sldIdLst[0].get('{http://schemas.openxmlformats.org/officeDocument/2006/relationships}id')
+        if rId:
+            prs.part.drop_rel(rId)
+        prs.slides._sldIdLst.remove(prs.slides._sldIdLst[0])
+    return prs
 
 
 def _get_layout(prs: Presentation, name: str):
@@ -369,8 +376,8 @@ def _clear_body_ph(slide):
 
 def build_cover_slide(prs: Presentation, style: SlideStyle, title: str,
                       subtitle: str = "", customer: str = "", date: str = "",
-                      image_path: str = None) -> None:
-    slide = _add_slide(prs, "Content_Basic", image_path=image_path)
+                      image_path: str = None, layout_name: str = None) -> None:
+    slide = _add_slide(prs, layout_name or "Content_Basic", image_path=image_path)
     _apply_composition(slide, style)
     _clear_body_ph(slide)
 
@@ -389,8 +396,9 @@ def build_cover_slide(prs: Presentation, style: SlideStyle, title: str,
 # ── TABLE OF CONTENTS ─────────────────────────────────────────
 
 def build_toc_slide(prs: Presentation, style: SlideStyle,
-                    items: list[str], slide_number: int = 0) -> None:
-    slide = _add_slide(prs, "Content_Basic")
+                    items: list[str], slide_number: int = 0,
+                    layout_name: str = None) -> None:
+    slide = _add_slide(prs, layout_name or "Content_Basic")
     _apply_composition(slide, style)
     _fill_ph(slide, 0, "Table of Contents", size=SZ_TITLE, color=style.title_color,
              bold=True, font_name=style.heading_font)
@@ -429,8 +437,8 @@ def build_toc_slide(prs: Presentation, style: SlideStyle,
 
 def build_section_divider(prs: Presentation, style: SlideStyle, title: str,
                           slide_number: int = 0, image_path: str = None,
-                          use_light: bool = False) -> None:
-    slide = _add_slide(prs, "Content_Basic", image_path=image_path)
+                          use_light: bool = False, layout_name: str = None) -> None:
+    slide = _add_slide(prs, layout_name or "Content_Basic", image_path=image_path)
     _apply_composition(slide, style)
     _clear_body_ph(slide)
 
@@ -1022,8 +1030,8 @@ def build_closing_slide(prs: Presentation, style: SlideStyle,
                         title: str = "Thank You",
                         contact_name: str = "", contact_email: str = "",
                         contact_phone: str = "", slide_number: int = 0,
-                        image_path: str = None) -> None:
-    slide = _add_slide(prs, "Content_Basic", image_path=image_path)
+                        image_path: str = None, layout_name: str = None) -> None:
+    slide = _add_slide(prs, layout_name or "Content_Basic", image_path=image_path)
     _apply_composition(slide, style)
     _clear_body_ph(slide)
 

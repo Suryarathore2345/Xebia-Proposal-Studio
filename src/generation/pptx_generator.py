@@ -36,11 +36,40 @@ from generation.slide_builders import (
     build_slide_by_layout,
     build_global_presence_slide,
     build_xebia_capabilities_slide,
+    build_migration_flow_slide,
 )
 from images.pexels_client import fetch_slide_image
 
 
 PHOTO_ELIGIBLE_LAYOUTS = {"content", "two_column", "key_value"}
+
+LAYER_COLOR_MAP = {
+    "blue": "blue", "teal": "teal", "purple": "purple",
+    "green": "green", "orange": "orange", "red": "orange",
+}
+ZONE_COLOR_CYCLE = ["orange", "teal", "blue", "purple", "green"]
+
+
+def _layers_to_migration_flow(layers: list[dict]) -> dict:
+    """Convert LLM architecture layers to migration_flow diagram format."""
+    zones = []
+    for i, layer in enumerate(layers):
+        color_name = layer.get("color", "")
+        zone_color = LAYER_COLOR_MAP.get(color_name, ZONE_COLOR_CYCLE[i % len(ZONE_COLOR_CYCLE)])
+
+        components = layer.get("components", [])
+        groups = [{
+            "label": layer.get("name", f"Layer {i+1}"),
+            "items": components,
+            "style": "icons",
+        }]
+        zones.append({
+            "title": layer.get("name", f"Layer {i+1}"),
+            "color": zone_color,
+            "groups": groups,
+        })
+
+    return {"zones": zones}
 
 
 def _theme_to_palette(theme: DesignTheme) -> DesignPalette:
@@ -218,6 +247,7 @@ class ProposalPPTGenerator:
             customer=data.get("customer", self.plan.get("customer", "")),
             date=data.get("date", ""),
             image_path=self._fetch_image(data, "cover"),
+            layout_name=self.template_info.get("cover_layout"),
         )
 
     def _build_toc(self, data: dict):
@@ -231,7 +261,8 @@ class ProposalPPTGenerator:
             section_data = self.plan.get("sections", {}).get(s, {})
             name = section_data.get("title", s.replace("_", " ").title())
             display_names.append(name)
-        build_toc_slide(self.prs, style, display_names, self._next_slide_num())
+        build_toc_slide(self.prs, style, display_names, self._next_slide_num(),
+                        layout_name=self.template_info.get("toc_layout"))
 
     def _build_exec_summary(self, data: dict):
         spec = self._next_spec()
@@ -239,7 +270,8 @@ class ProposalPPTGenerator:
         build_section_divider(self.prs, style, data.get("title", "Executive Summary"),
                               self._next_slide_num(),
                               image_path=self._fetch_image(data, "section_divider"),
-                              use_light=self._next_divider_light())
+                              use_light=self._next_divider_light(),
+                              layout_name=self.template_info.get("chapter_layout"))
 
         spec = self._next_spec()
         style = self._style_for_spec(spec)
@@ -258,7 +290,8 @@ class ProposalPPTGenerator:
         style = self._style_for_spec(spec)
         build_section_divider(self.prs, style, title, self._next_slide_num(),
                               image_path=self._fetch_image(data, "section_divider"),
-                              use_light=self._next_divider_light())
+                              use_light=self._next_divider_light(),
+                              layout_name=self.template_info.get("chapter_layout"))
 
         slides = data.get("slides", [])
         if slides:
@@ -268,7 +301,15 @@ class ProposalPPTGenerator:
                 spec = self._next_spec()
                 style = self._style_for_spec(spec)
 
-                if layout and layout in PHOTO_ELIGIBLE_LAYOUTS and image_path:
+                if layout == "architecture" and slide_data.get("layers"):
+                    diagram = _layers_to_migration_flow(slide_data["layers"])
+                    build_migration_flow_slide(
+                        self.prs, style,
+                        title=slide_data.get("title", title),
+                        diagram=diagram,
+                        slide_number=self._next_slide_num(),
+                    )
+                elif layout and layout in PHOTO_ELIGIBLE_LAYOUTS and image_path:
                     use_dark = self._photo_side_counter % 4 == 3
                     build_content_photo_slide(
                         self.prs, style,
@@ -328,7 +369,8 @@ class ProposalPPTGenerator:
         style = self._style_for_spec(spec)
         build_section_divider(self.prs, style, title, self._next_slide_num(),
                               image_path=self._fetch_image(data, "timeline"),
-                              use_light=self._next_divider_light())
+                              use_light=self._next_divider_light(),
+                              layout_name=self.template_info.get("chapter_layout"))
         spec = self._next_spec()
         style = self._style_for_spec(spec)
         build_timeline_slide(self.prs, style, title=title,
@@ -341,7 +383,8 @@ class ProposalPPTGenerator:
         style = self._style_for_spec(spec)
         build_section_divider(self.prs, style, title, self._next_slide_num(),
                               image_path=self._fetch_image(data, "team"),
-                              use_light=self._next_divider_light())
+                              use_light=self._next_divider_light(),
+                              layout_name=self.template_info.get("chapter_layout"))
         spec = self._next_spec()
         style = self._style_for_spec(spec)
         build_team_slide(self.prs, style, title=title,
@@ -354,7 +397,8 @@ class ProposalPPTGenerator:
         style = self._style_for_spec(spec)
         build_section_divider(self.prs, style, title, self._next_slide_num(),
                               image_path=self._fetch_image(data, "content"),
-                              use_light=self._next_divider_light())
+                              use_light=self._next_divider_light(),
+                              layout_name=self.template_info.get("chapter_layout"))
         spec = self._next_spec()
         style = self._style_for_spec(spec)
         build_commercials_slide(self.prs, style, title=title,
@@ -374,6 +418,7 @@ class ProposalPPTGenerator:
             contact_phone=data.get("contact_phone", ""),
             slide_number=self._next_slide_num(),
             image_path=self._fetch_image(data, "closing"),
+            layout_name=self.template_info.get("closing_layout"),
         )
 
 
