@@ -119,10 +119,10 @@ Return ONLY a JSON object (no markdown, no code fences) with "ready": true and t
   "customer": "Customer name",
   "industry": "Customer's industry",
   "objective": "One-line objective",
-  "storyline": ["cover", "executive_summary", "corporate_overview", "understanding_of_scope", "proposed_solution", "architecture", "technology_stack", "delivery_approach", "timeline", "team_structure", "commercials", "risk_mitigation", "case_studies", "next_steps", "closing"],
+  "storyline": ["cover", "table_of_contents", "executive_summary", "corporate_overview", "understanding_of_scope", "proposed_solution", "architecture", "technology_stack", "delivery_approach", "timeline", "team_structure", "commercials", "payment_milestones", "support_model", "licensing_estimate", "risk_mitigation", "case_studies", "next_steps", "closing"],
   "sections": {{ ... one entry per storyline item, schema below ... }}
 }}
-"storyline" is the array of section keys, in the order they should appear — pick the ones relevant to this proposal from the list above, do not invent new ones. Every key in "sections" must have a matching entry in "storyline".
+"storyline" is the array of section keys, in the order they should appear — pick the ones relevant to this proposal from the list above, do not invent new ones. Every key in "sections" must have a matching entry in "storyline". Include "table_of_contents" as the SECOND entry (right after "cover") only when the proposal will have more than ~10 sections — omit it for shorter decks. "payment_milestones", "support_model", and "licensing_estimate" are OPTIONAL — include them only for enterprise/complex engagements, and when included keep "commercials", "payment_milestones", "support_model", "licensing_estimate" together as one contiguous block in that order (commercials first); skip all three for smaller or simpler proposals.
 
 {SECTION_SCHEMA}
 

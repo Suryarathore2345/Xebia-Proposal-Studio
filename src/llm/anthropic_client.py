@@ -47,6 +47,9 @@ SECTION_SCHEMA = """SECTION STRUCTURE — every key inside "sections" must use t
 
 "cover": {"title": "...", "subtitle": "one-line value proposition", "customer": "...", "date": "YYYY-MM-DD"}
 
+"table_of_contents": {"title": "Table of Contents"}
+Include "table_of_contents" as the SECOND storyline entry (right after "cover") whenever the proposal will have more than ~10 sections — skip it for shorter decks where it would just be filler.
+
 "executive_summary": {
   "title": "Executive Summary",
   "summary": "2-3 sentence overview of the engagement — mention the customer's challenge, Xebia's approach, and expected outcome",
@@ -119,6 +122,10 @@ Two layout options for architecture content — pick based on what the proposal 
 
 For a data platform / migration proposal, generate 2-3 DISTINCT migration_flow diagrams that each earn their place — e.g. "Current-State Architecture" (today's fragmented/legacy setup), "Target Architecture" or "End-to-End Data Flow" (the proposed platform, source to consumption), and optionally a third focused view (e.g. medallion/lakehouse layers, or the analytics/consumption layer) — never repeat the same zones/content across multiple diagrams. For a smaller or simpler proposal, one "architecture" slide is enough — don't pad with diagrams that don't add information.
 
+NEVER include both an "architecture" (pyramid layers) slide AND a "migration_flow" slide that describe the same breakdown (e.g. both walking through the identical Bronze/Silver/Gold medallion layers) — that reads as padding, not depth. If you use both layout types in one proposal, they must serve genuinely different purposes: e.g. the "architecture" slide is the single canonical layer reference (used once), while "migration_flow" diagrams are flow/lineage-oriented (source-to-consumption data movement) or show a distinct lifecycle view (current-state vs. target-state) — not a second rendering of the same layer list in a different shape.
+
+OPTIONAL — options considered: when there are genuinely 2+ viable architectural approaches for this engagement and one was chosen (e.g. two different MDM strategies, two hosting models), add ONE extra slide inside the "architecture" section's "slides" array with "layout": "comparison_table", headers like ["Criteria", "Option 1: X", "Option 2: Y"], and rows comparing them on cost/complexity/timeline/fit — state which option is recommended in the surrounding text. Skip this entirely when there's only one sensible approach; don't manufacture a false choice.
+
 "technology_stack": {
   "title": "Technology Stack",
   "slides": [
@@ -141,8 +148,12 @@ For a data platform / migration proposal, generate 2-3 DISTINCT migration_flow d
 
 "timeline": {
   "title": "Project Timeline",
-  "phases": [{"name": "Phase 1: ...", "duration": "Week 1-4", "description": "key deliverables"}, ...] (4-6 phases)
+  "phases": [
+    {"name": "Phase 1: ...", "duration": "Week 1-4", "start_week": 1, "duration_weeks": 4},
+    ... (4-8 phases/workstreams)
+  ]
 }
+This renders as a real week-ruled Gantt chart (bars, not description cards) — keep phase names short (they're a row label, not a place for detail; put step-by-step detail in "delivery_approach" instead). "duration" is the human-readable label shown on the bar (keep it consistent with start_week/duration_weeks). "start_week" and "duration_weeks" are integers (week 1 = project start) that drive the bar's position and width — workstreams that genuinely run in parallel should OVERLAP in their week ranges (e.g. a "Data Governance" phase starting mid-way through "Data Ingestion" rather than only after it finishes) instead of always being purely sequential — real delivery plans have concurrent workstreams.
 
 "team_structure": {
   "title": "Proposed Team",
@@ -161,6 +172,33 @@ For a data platform / migration proposal, generate 2-3 DISTINCT migration_flow d
   "total": "grand total",
   "assumptions": ["Payment terms", "Travel excluded", "Rate validity period", ...]
 }
+
+SITUATIONAL SECTIONS — "payment_milestones", "support_model", "licensing_estimate" below are OPTIONAL. Include them for enterprise/complex engagements (large team, multi-phase delivery, regulated industry) where a real proposal would need this level of commercial detail. Skip all three for smaller or simpler proposals — don't pad every deck with them regardless of deal size. When included, keep "commercials", "payment_milestones", "support_model", and "licensing_estimate" as ONE CONTIGUOUS block in that order (commercials first) — readers need the total investment before milestones/support/licensing detail, and interleaving them with "risk_mitigation" or other sections breaks that financial narrative.
+
+"payment_milestones": {
+  "title": "Payment Milestones",
+  "slides": [
+    {"title": "Payment Milestones", "layout": "comparison_table",
+     "headers": ["Milestone", "% of Contract Value", "Trigger Condition"],
+     "rows": [["Mobilization", "25%", "Contract signed, project kickoff"], ...] (3-5 milestones)}
+  ]
+}
+
+"support_model": {
+  "title": "Support Model",
+  "layout": "icon_grid",
+  "items": [{"label": "Support tier name (e.g. 'L1 — Business Hours')", "description": "response/resolution SLA and scope"}, ...] (3-5 tiers)
+}
+
+"licensing_estimate": {
+  "title": "Licensing & Infrastructure Estimate",
+  "slides": [
+    {"title": "Licensing & Infrastructure Estimate", "layout": "comparison_table",
+     "headers": ["Component", "Est. Monthly Cost", "Est. Annual Cost"],
+     "rows": [["Microsoft Fabric Capacity (F64)", "$8,400", "$100,800"], ...] (3-6 components)}
+  ]
+}
+Keep this separate from "commercials" (which covers Xebia's services/labor cost only) — this section covers the customer's own cloud/platform spend, billed directly to them.
 
 "risk_mitigation": {
   "title": "Risk Mitigation",
@@ -260,6 +298,7 @@ CONTENT QUALITY RULES:
 9. Each section's "slides" array can have multiple slides — use this to avoid overloading any single slide with too much content.
 10. For commercials, use rates in the $150-250/hr range unless specified. Calculate hours realistically based on timeline and team size.
 11. EVERY slide must have an "image_query" field for stock photo fetching.
+12. Include "payment_milestones", "support_model", and "licensing_estimate" only for enterprise/complex engagements (see their schemas above) — omit them for smaller or simpler proposals rather than padding every deck with the same sections regardless of deal size.
 
 CRITICAL RULES:
 - ALWAYS use the customer name and project details provided by the USER. NEVER copy or reuse organization names, project names, client names, contact details, or specific business context from reference material.

@@ -66,6 +66,19 @@ FOOTER_Y = 6.90
 ACCENT_LINE_Y = 1.92
 ACCENT_LINE_H = 0.03
 
+
+def _distribute_rows(n: int, min_h: float, max_h: float, gap: float,
+                      zone_top: float = CONTENT_TOP, zone_h: float = CONTENT_H) -> tuple[float, float]:
+    """Row/card height (grown up to max_h, never shrunk below min_h) and a
+    start_y that vertically centers the resulting block within the zone, so
+    a short list doesn't leave a dead band at the bottom of the slide."""
+    if n <= 0:
+        return max_h, zone_top
+    row_h = max(min_h, min(max_h, (zone_h - (n - 1) * gap) / n))
+    block_h = n * row_h + (n - 1) * gap
+    start_y = zone_top + max(0.0, (zone_h - block_h) / 2)
+    return row_h, start_y
+
 # Font sizes — constrained by slide geometry to prevent overflow.
 SZ_HERO = 32
 SZ_SECTION = 28
@@ -397,17 +410,30 @@ def build_cover_slide(prs: Presentation, style: SlideStyle, title: str,
     slide = _add_slide(prs, "Content_Basic", image_path=image_path)
     _apply_composition(slide, style)
     _clear_body_ph(slide)
+    _place_logo(slide, style)
 
     title_y = 2.50
     _add_textbox(slide, CONTENT_L, title_y, CONTENT_W, 1.80,
                  title, SZ_HERO, style.title_color,
                  bold=True, font_name=style.heading_font)
 
-    sub_parts = [p for p in [subtitle, f"Prepared for {customer}" if customer else "", date] if p]
+    # subtitle already names the customer (per SECTION_SCHEMA guidance), so
+    # only append a "Prepared for" clause when the customer isn't already
+    # mentioned in it — avoids repeating the customer name twice on the slide.
+    prepared_for = ""
+    if customer and customer.lower() not in subtitle.lower():
+        prepared_for = f"Prepared for {customer}"
+    sub_parts = [p for p in [subtitle, prepared_for, date] if p]
     if sub_parts:
         _add_textbox(slide, CONTENT_L, title_y + 1.90, CONTENT_W, 0.60,
                      " | ".join(sub_parts), SZ_SUBTITLE, style.body_color,
                      font_name=style.body_font)
+
+    if customer:
+        _add_textbox(slide, CONTENT_L, CONTENT_BOTTOM - 0.05, CONTENT_W, 0.55,
+                     f"CONFIDENTIAL — prepared exclusively for {customer}; "
+                     "not for external distribution.",
+                     SZ_TINY, style.body_color, font_name=style.body_font)
 
 
 # ── TABLE OF CONTENTS ─────────────────────────────────────────
@@ -425,8 +451,9 @@ def build_toc_slide(prs: Presentation, style: SlideStyle,
     col2_items = items[mid:]
 
     col_w = (CONTENT_W - 0.40) / 2
-    item_h = 0.45
-    start_y = CONTENT_TOP + 0.15
+    item_h, start_y = _distribute_rows(max(len(col1_items), len(col2_items), 1),
+                                        min_h=0.45, max_h=0.85, gap=0.0,
+                                        zone_top=CONTENT_TOP + 0.15, zone_h=CONTENT_H - 0.15)
 
     for i, item in enumerate(col1_items):
         y = start_y + i * item_h
@@ -457,6 +484,7 @@ def build_section_divider(prs: Presentation, style: SlideStyle, title: str,
     slide = _add_slide(prs, "Content_Basic", image_path=image_path)
     _apply_composition(slide, style)
     _clear_body_ph(slide)
+    _place_logo(slide, style)
 
     _add_textbox(slide, CONTENT_L, 2.80, CONTENT_W, 1.50,
                  title, SZ_SECTION, style.title_color,
@@ -631,12 +659,12 @@ def build_icon_grid_slide(prs: Presentation, style: SlideStyle, title: str,
     rows = (num_items + cols - 1) // cols
     gap_x, gap_y = 0.25, 0.20
     card_w = (CONTENT_W - (cols - 1) * gap_x) / cols
-    card_h = min((CONTENT_H - (rows - 1) * gap_y) / rows, 2.2)
+    card_h, grid_top = _distribute_rows(rows, min_h=2.2, max_h=2.2, gap=gap_y)
 
     for i, item in enumerate(items[:num_items]):
         col, row = i % cols, i // cols
         x = CONTENT_L + col * (card_w + gap_x)
-        y = CONTENT_TOP + 0.1 + row * (card_h + gap_y)
+        y = grid_top + row * (card_h + gap_y)
         color = cycle[i % len(cycle)]
 
         _add_card(slide, x, y, card_w, card_h, style, accent_color=color)
@@ -734,12 +762,13 @@ def build_comparison_table_slide(prs: Presentation, style: SlideStyle, title: st
 
     num_cols = len(headers)
     num_rows = min(len(rows) + 1, 12)
-    row_height = min(0.50, 4.2 / num_rows)
+    row_height, table_top = _distribute_rows(num_rows, min_h=0.35, max_h=0.75, gap=0.0,
+                                             zone_top=CONTENT_TOP + 0.15, zone_h=CONTENT_H - 0.15)
     table_w = min(CONTENT_W, 11.8)
 
     table_shape = slide.shapes.add_table(
         num_rows, num_cols,
-        Inches(CONTENT_L), Inches(CONTENT_TOP + 0.15),
+        Inches(CONTENT_L), Inches(table_top),
         Inches(table_w), Inches(row_height * num_rows)
     )
     table = table_shape.table
@@ -788,8 +817,8 @@ def build_stats_highlight_slide(prs: Presentation, style: SlideStyle, title: str
     num_stats = min(len(stats), 4)
     gap = 0.30
     card_w = (CONTENT_W - (num_stats - 1) * gap) / num_stats
-    card_h = min(3.8, CONTENT_H - 0.2)
-    card_y = CONTENT_TOP + 0.1
+    stat_card_h = min(3.8, CONTENT_H - 0.2)
+    card_h, card_y = _distribute_rows(1, min_h=stat_card_h, max_h=stat_card_h, gap=0.0)
 
     for i, stat in enumerate(stats[:4]):
         x = CONTENT_L + i * (card_w + gap)
@@ -827,8 +856,9 @@ def build_key_value_slide(prs: Presentation, style: SlideStyle, title: str,
              bold=True, font_name=style.heading_font)
     _clear_body_ph(slide)
 
-    start_y = CONTENT_TOP + 0.1
-    row_h = 0.50
+    n = len(pairs[:10])
+    row_h, start_y = _distribute_rows(n, min_h=0.50, max_h=0.85, gap=0.0,
+                                       zone_top=CONTENT_TOP + 0.1, zone_h=CONTENT_H - 0.1)
     key_w = 3.5
 
     for i, pair in enumerate(pairs[:10]):
@@ -851,8 +881,27 @@ def build_key_value_slide(prs: Presentation, style: SlideStyle, title: str,
 
 # ── TIMELINE ──────────────────────────────────────────────────
 
+def _parse_weeks_from_duration(duration: str, fallback_weeks: int = 2) -> int:
+    """Best-effort parse of a week count from a human label like "Week 1-4"
+    or "3 Weeks" when a phase doesn't supply duration_weeks explicitly —
+    keeps the Gantt renderer usable even against older-shaped plan data."""
+    import re
+    if not duration:
+        return fallback_weeks
+    m = re.search(r"(\d+)\s*[-–]\s*(\d+)", duration)
+    if m:
+        return max(1, int(m.group(2)) - int(m.group(1)) + 1)
+    m = re.search(r"(\d+)", duration)
+    if m:
+        return max(1, int(m.group(1)))
+    return fallback_weeks
+
+
 def build_timeline_slide(prs: Presentation, style: SlideStyle, title: str,
                          phases: list[dict], slide_number: int = 0) -> None:
+    """Week-ruled Gantt: one row per phase/workstream, bars positioned by
+    start_week/duration_weeks so genuinely parallel workstreams can overlap,
+    instead of a purely sequential phase-card layout."""
     slide = _add_slide(prs, "Content_Basic")
     _apply_composition(slide, style)
     _fill_ph(slide, 0, title, size=SZ_TITLE, color=style.title_color,
@@ -862,40 +911,82 @@ def build_timeline_slide(prs: Presentation, style: SlideStyle, title: str,
     cycle = [style.palette.primary, style.palette.accent1, style.palette.secondary,
              style.palette.accent2, style.palette.accent3]
 
-    num_phases = min(len(phases), 6)
-    bar_w = CONTENT_W / num_phases
-    bar_h = 0.60
-    bar_y = 2.30
+    # Normalize start_week/duration_weeks, filling gaps sequentially for any
+    # phase that omits them so older-shaped plan data still renders sanely.
+    normalized = []
+    cursor = 1
+    for phase in phases[:8]:
+        dur = phase.get("duration_weeks")
+        if not isinstance(dur, int) or dur <= 0:
+            dur = _parse_weeks_from_duration(phase.get("duration", ""))
+        start = phase.get("start_week")
+        if not isinstance(start, int) or start <= 0:
+            start = cursor
+        normalized.append({**phase, "start_week": start, "duration_weeks": dur})
+        cursor = start + dur
 
-    _add_shape(slide, MSO_SHAPE.RECTANGLE,
-               CONTENT_L, bar_y + bar_h / 2 - 0.015,
-               CONTENT_W, 0.03, fill_color=style.border_color)
+    if not normalized:
+        return
 
-    for i, phase in enumerate(phases[:num_phases]):
-        x = CONTENT_L + i * bar_w
+    total_weeks = max(p["start_week"] + p["duration_weeks"] - 1 for p in normalized)
+
+    label_w = 2.6
+    chart_x = CONTENT_L + label_w
+    chart_w = CONTENT_R - chart_x
+    week_col_w = chart_w / total_weeks
+
+    _add_textbox(slide, CONTENT_L, CONTENT_TOP - 0.35, CONTENT_W, 0.30,
+                 f"TOTAL PROJECT TIMELINE: {total_weeks} WEEKS", SZ_SMALL,
+                 style.accent_color, bold=True, alignment=PP_ALIGN.CENTER,
+                 font_name=style.heading_font)
+
+    header_y = CONTENT_TOP + 0.05
+    header_h = 0.30
+    n = len(normalized)
+    row_h, rows_start_y = _distribute_rows(
+        n, min_h=0.35, max_h=0.55, gap=0.08,
+        zone_top=header_y + header_h + 0.10,
+        zone_h=CONTENT_BOTTOM - (header_y + header_h + 0.10))
+    chart_bottom = rows_start_y + n * row_h + (n - 1) * 0.08
+
+    # Week-number ticks and vertical gridlines behind the bars.
+    week_step = 1 if total_weeks <= 14 else 2
+    for w in range(0, total_weeks + 1, week_step):
+        gx = chart_x + w * week_col_w
+        if w > 0:
+            label_box_w = max(week_col_w, 0.45)
+            tick = _add_textbox(slide, gx - label_box_w / 2, header_y, label_box_w, header_h,
+                                f"W{w}", SZ_TINY, style.body_color, bold=True,
+                                alignment=PP_ALIGN.CENTER, font_name=style.body_font)
+            tick.text_frame.word_wrap = False
+        _add_shape(slide, MSO_SHAPE.RECTANGLE, gx, header_y + header_h,
+                   0.01, chart_bottom - (header_y + header_h), fill_color=style.border_color)
+
+    _add_shape(slide, MSO_SHAPE.RECTANGLE, chart_x, header_y + header_h,
+               chart_w, 0.02, fill_color=style.border_color)
+
+    for i, phase in enumerate(normalized):
+        y = rows_start_y + i * (row_h + 0.08)
         color = cycle[i % len(cycle)]
 
-        _add_shape(slide, MSO_SHAPE.ROUNDED_RECTANGLE,
-                   x + 0.05, bar_y, bar_w - 0.10, bar_h, fill_color=color)
-        _add_textbox(slide, x + 0.1, bar_y + 0.10, bar_w - 0.2, 0.40,
-                     phase.get("name", ""), 10, style.palette.text_light,
-                     bold=True, alignment=PP_ALIGN.CENTER, font_name=style.heading_font)
+        _add_textbox(slide, CONTENT_L, y + 0.03, label_w - 0.15, row_h,
+                     phase.get("name", ""), SZ_SMALL, style.title_color,
+                     bold=True, font_name=style.heading_font)
 
-        duration = phase.get("duration", "")
-        if duration:
-            _add_textbox(slide, x + 0.05, bar_y + bar_h + 0.10,
-                         bar_w - 0.1, 0.25,
-                         duration, SZ_SMALL, style.accent_color,
-                         bold=True, alignment=PP_ALIGN.CENTER, font_name=style.body_font)
+        bar_x = chart_x + (phase["start_week"] - 1) * week_col_w
+        bar_w = max(phase["duration_weeks"] * week_col_w - 0.04, 0.15)
+        _add_shape(slide, MSO_SHAPE.ROUNDED_RECTANGLE, bar_x, y, bar_w, row_h,
+                   fill_color=color)
 
-        desc = phase.get("description", "")
-        if desc:
-            desc_top = bar_y + bar_h + 0.40
-            desc_h = min(2.8, CONTENT_BOTTOM - desc_top - 0.1)
-            _add_card(slide, x + 0.05, desc_top, bar_w - 0.1, desc_h,
-                      style, accent_color=color)
-            _add_textbox(slide, x + 0.15, desc_top + 0.12, bar_w - 0.3, desc_h - 0.2,
-                         desc, SZ_SMALL, style.body_color, font_name=style.body_font)
+        duration_label = phase.get("duration") or f"{phase['duration_weeks']}w"
+        if bar_w >= 0.7:
+            _add_textbox(slide, bar_x, y + 0.03, bar_w, row_h, duration_label,
+                         SZ_TINY, style.palette.text_light, bold=True,
+                         alignment=PP_ALIGN.CENTER, font_name=style.body_font)
+        else:
+            _add_textbox(slide, bar_x + bar_w + 0.06, y + 0.03, 1.0, row_h,
+                         duration_label, SZ_TINY, style.body_color,
+                         font_name=style.body_font)
 
 
 # ── TEAM ──────────────────────────────────────────────────────
@@ -916,12 +1007,12 @@ def build_team_slide(prs: Presentation, style: SlideStyle, title: str,
     gap_x, gap_y = 0.20, 0.15
     card_w = (CONTENT_W - (cols - 1) * gap_x) / cols
     rows = (num_members + cols - 1) // cols
-    card_h = min(2.0, (CONTENT_H - (rows - 1) * gap_y) / rows)
+    card_h, grid_top = _distribute_rows(rows, min_h=2.0, max_h=2.0, gap=gap_y)
 
     for i, member in enumerate(team_members[:num_members]):
         col, row = i % cols, i // cols
         x = CONTENT_L + col * (card_w + gap_x)
-        y = CONTENT_TOP + 0.1 + row * (card_h + gap_y)
+        y = grid_top + row * (card_h + gap_y)
         color = cycle[i % len(cycle)]
 
         _add_card(slide, x, y, card_w, card_h, style, accent_color=color)
@@ -967,11 +1058,16 @@ def build_commercials_slide(prs: Presentation, style: SlideStyle, title: str,
     if rows:
         headers = ["Role / Item", "Hours", "Rate ($/hr)", "Cost ($)"]
         num_rows = len(rows) + 2
+        # Grows row height when the table is short, but stays top-anchored
+        # (rather than centered) so it lines up with the Assumptions column,
+        # which starts at the same CONTENT_TOP + 0.1 y-position.
+        row_h, _ = _distribute_rows(num_rows, min_h=0.42, max_h=0.65, gap=0.0,
+                                    zone_top=CONTENT_TOP + 0.1, zone_h=CONTENT_H - 0.1)
         table_w = 8.0
         table_shape = slide.shapes.add_table(
             num_rows, 4,
             Inches(CONTENT_L), Inches(CONTENT_TOP + 0.1),
-            Inches(table_w), Inches(0.42 * num_rows)
+            Inches(table_w), Inches(row_h * num_rows)
         )
         table = table_shape.table
         table.columns[0].width = Inches(3.5)
@@ -1031,6 +1127,24 @@ def build_commercials_slide(prs: Presentation, style: SlideStyle, title: str,
                          assumption, SZ_TINY, style.body_color, font_name=style.body_font)
 
 
+_LOGO_DIR = Path(__file__).resolve().parent.parent.parent / "xebia_design_system" / "assets" / "logos"
+_LOGO_ASPECT = 85 / 29  # native SVG viewBox width/height
+
+
+def _place_logo(slide, style: SlideStyle, top: float = 0.55, width: float = 0.85):
+    """Place the Xebia wordmark top-left, picking the white variant on dark
+    backgrounds and the near-black variant on light ones for contrast."""
+    is_dark_bg = style.title_color.upper() == "#FFFFFF"
+    logo_path = _LOGO_DIR / ("xebia_logo_light.png" if is_dark_bg else "xebia_logo_dark.png")
+    if not logo_path.exists():
+        return
+    try:
+        slide.shapes.add_picture(str(logo_path), Inches(CONTENT_L), Inches(top),
+                                  width=Inches(width), height=Inches(width / _LOGO_ASPECT))
+    except Exception:
+        pass
+
+
 def _lighten_color(hex_color: str, factor: float) -> str:
     h = hex_color.lstrip("#")
     r, g, b = int(h[0:2], 16), int(h[2:4], 16), int(h[4:6], 16)
@@ -1050,6 +1164,7 @@ def build_closing_slide(prs: Presentation, style: SlideStyle,
     slide = _add_slide(prs, "Content_Basic", image_path=image_path)
     _apply_composition(slide, style)
     _clear_body_ph(slide)
+    _place_logo(slide, style)
 
     _add_textbox(slide, CONTENT_L, 2.20, CONTENT_W, 1.80,
                  title, SZ_HERO, style.title_color,
@@ -1185,12 +1300,12 @@ def build_technology_slide(prs: Presentation, style: SlideStyle, title: str,
     rows = (num_items + cols - 1) // cols
     gap_x, gap_y = 0.20, 0.15
     card_w = (CONTENT_W - (cols - 1) * gap_x) / cols
-    card_h = min(2.0, (CONTENT_H - (rows - 1) * gap_y) / rows)
+    card_h, grid_top = _distribute_rows(rows, min_h=2.0, max_h=2.0, gap=gap_y)
 
     for i, tech in enumerate(technologies[:num_items]):
         col, row = i % cols, i // cols
         x = CONTENT_L + col * (card_w + gap_x)
-        y = CONTENT_TOP + 0.1 + row * (card_h + gap_y)
+        y = grid_top + row * (card_h + gap_y)
         color = cycle[i % len(cycle)]
 
         _add_card(slide, x, y, card_w, card_h, style, accent_color=color)
@@ -1254,9 +1369,13 @@ def build_challenges_slide(prs: Presentation, style: SlideStyle, title: str,
                      header, 11, style.palette.text_light, bold=True,
                      alignment=PP_ALIGN.CENTER, font_name=style.heading_font)
 
-    row_h = 0.75
+    rows_zone_top = header_y + 0.55
+    n = len(challenges[:5])
+    row_h, rows_start_y = _distribute_rows(n, min_h=0.75, max_h=1.15, gap=0.08,
+                                           zone_top=rows_zone_top,
+                                           zone_h=CONTENT_BOTTOM - rows_zone_top)
     for i, ch in enumerate(challenges[:5]):
-        y = header_y + 0.55 + i * (row_h + 0.08)
+        y = rows_start_y + i * (row_h + 0.08)
         if y + row_h > CONTENT_BOTTOM:
             break
         keys_colors = [
