@@ -504,11 +504,20 @@ def review_and_improve_plan(plan: dict) -> dict:
 def generate_text(prompt: str, max_tokens: int = 2000) -> str:
     """Plain text completion — used by the design engine (theme/blueprint
     selection) so it can be driven by whichever provider the chat toggle
-    picked, not hardcoded to Claude."""
+    picked, not hardcoded to Claude.
+
+    Extended thinking is explicitly disabled: this model enables it by
+    default, and on structured-JSON calls like blueprint selection it can
+    consume the entire max_tokens budget on invisible reasoning, leaving
+    nothing (or a truncated fragment) for the actual JSON — the exact cause
+    of blueprint selection silently falling back to rule-based design on
+    larger decks. These calls need reliable structured output, not hidden
+    reasoning, so thinking is off rather than just raising max_tokens."""
     client = get_client()
     response = client.messages.create(
         model=MODEL,
         max_tokens=max_tokens,
+        thinking={"type": "disabled"},
         messages=[{"role": "user", "content": prompt}],
     )
     return "".join(block.text for block in response.content if block.type == "text")

@@ -118,19 +118,39 @@ Return ONLY valid JSON array (no markdown fences):
 Array MUST have exactly {slide_count} entries, one per slide in the manifest."""
 
 
+def _extract_json_array(text: str) -> str:
+    """Pull the JSON array out of an LLM response that may include a code
+    fence and/or a preamble sentence before it (e.g. "Looking at this deck,
+    I'll standardize on...") — naive `startswith("\`\`\`")` stripping misses
+    the preamble case, so fall back to slicing between the first "[" and
+    the last "]" when no fence is found at the very start."""
+    if text.startswith("```"):
+        lines = [l for l in text.split("\n") if not l.strip().startswith("```")]
+        return "\n".join(lines)
+    start, end = text.find("["), text.rfind("]")
+    if start != -1 and end != -1 and end > start:
+        return text[start:end + 1]
+    return text
+
+
 def design_slides(plan: dict, theme: DesignTheme, provider: str = "claude") -> list[SlideDesignSpec]:
-    """Select blueprints for all slides, with a rule-based fallback."""
+    """Select blueprints for all slides, with a same-provider retry, a
+    cross-provider retry, and a rule-based fallback if both LLM attempts fail."""
     manifest = build_slide_manifest(plan)
 
-    try:
-        specs = _llm_design(manifest, theme, provider)
-        if len(specs) == len(manifest):
-            specs = enforce_variety(specs, manifest)
-            return specs
-        print(f"[SlideDesigner] Count mismatch ({len(specs)} vs {len(manifest)}), using fallback")
-    except Exception as e:
-        print(f"[SlideDesigner] {provider} failed ({e}), using rule-based fallback")
+    other_provider = "gemini" if provider == "claude" else "claude"
+    for attempt_provider in (provider, other_provider):
+        try:
+            specs = _llm_design(manifest, theme, attempt_provider)
+            if len(specs) == len(manifest):
+                specs = enforce_variety(specs, manifest)
+                return specs
+            print(f"[SlideDesigner] {attempt_provider}: count mismatch "
+                  f"({len(specs)} vs {len(manifest)})")
+        except Exception as e:
+            print(f"[SlideDesigner] {attempt_provider} failed ({e})")
 
+    print("[SlideDesigner] Both providers failed, using rule-based fallback")
     return _rule_based_design(manifest, theme)
 
 
@@ -161,11 +181,13 @@ def _llm_design(manifest: list[dict], theme: DesignTheme, provider: str = "claud
         slide_count=len(manifest),
     )
 
-    text = generate_text(prompt, max_tokens=8000).strip()
-    if text.startswith("```"):
-        lines = text.split("\n")
-        lines = [l for l in lines if not l.strip().startswith("```")]
-        text = "\n".join(lines)
+    # ~8000 tokens covers a typical ~25-slide deck's JSON array comfortably;
+    # scale up for larger decks so the response doesn't truncate mid-array
+    # (empty/truncated JSON is the #1 cause of falling back to rule-based
+    # design on big proposals).
+    max_tokens = max(8000, len(manifest) * 220)
+    text = generate_text(prompt, max_tokens=max_tokens).strip()
+    text = _extract_json_array(text)
 
     data = json.loads(text)
     specs = []
