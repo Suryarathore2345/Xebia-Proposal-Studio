@@ -659,7 +659,11 @@ def build_icon_grid_slide(prs: Presentation, style: SlideStyle, title: str,
     rows = (num_items + cols - 1) // cols
     gap_x, gap_y = 0.25, 0.20
     card_w = (CONTENT_W - (cols - 1) * gap_x) / cols
-    card_h, grid_top = _distribute_rows(rows, min_h=2.2, max_h=2.2, gap=gap_y)
+    # min_h is a floor, not a forced value: with 3 rows (7-9 items) at a
+    # fixed 2.2" each the grid would overflow CONTENT_H (7.0" > 4.9") — a
+    # low floor lets row_h shrink to fit while still centering/growing
+    # toward 2.2" when there's only 1-2 rows.
+    card_h, grid_top = _distribute_rows(rows, min_h=0.5, max_h=2.2, gap=gap_y)
 
     for i, item in enumerate(items[:num_items]):
         col, row = i % cols, i // cols
@@ -1007,7 +1011,7 @@ def build_team_slide(prs: Presentation, style: SlideStyle, title: str,
     gap_x, gap_y = 0.20, 0.15
     card_w = (CONTENT_W - (cols - 1) * gap_x) / cols
     rows = (num_members + cols - 1) // cols
-    card_h, grid_top = _distribute_rows(rows, min_h=2.0, max_h=2.0, gap=gap_y)
+    card_h, grid_top = _distribute_rows(rows, min_h=0.5, max_h=2.0, gap=gap_y)
 
     for i, member in enumerate(team_members[:num_members]):
         col, row = i % cols, i // cols
@@ -1300,7 +1304,7 @@ def build_technology_slide(prs: Presentation, style: SlideStyle, title: str,
     rows = (num_items + cols - 1) // cols
     gap_x, gap_y = 0.20, 0.15
     card_w = (CONTENT_W - (cols - 1) * gap_x) / cols
-    card_h, grid_top = _distribute_rows(rows, min_h=2.0, max_h=2.0, gap=gap_y)
+    card_h, grid_top = _distribute_rows(rows, min_h=0.5, max_h=2.0, gap=gap_y)
 
     for i, tech in enumerate(technologies[:num_items]):
         col, row = i % cols, i // cols
