@@ -197,6 +197,25 @@ def _get_ph(slide, idx: int):
         return None
 
 
+def _layout_has_static_heading(slide, expected_text: str) -> bool:
+    """True if the slide's layout already bakes in a non-placeholder shape
+    whose text matches expected_text — some templates draw their section
+    heading as fixed layout art rather than a fillable placeholder."""
+    try:
+        layout_shapes = slide.slide_layout.shapes
+    except Exception:
+        return False
+    expected = expected_text.strip().lower()
+    for shape in layout_shapes:
+        if shape.is_placeholder:
+            continue
+        if not shape.has_text_frame:
+            continue
+        if shape.text_frame.text.strip().lower() == expected:
+            return True
+    return False
+
+
 def _fill_ph(slide, idx: int, text: str, size: float = None,
              color: str = None, bold: bool = None, alignment=None,
              font_name: str = "Arial"):
@@ -453,10 +472,13 @@ def build_toc_slide(prs: Presentation, style: SlideStyle,
     _apply_composition(slide, style)
     title_ph = _fill_ph(slide, 0, "Table of Contents", size=SZ_TITLE, color=style.title_color,
                         bold=True, font_name=style.heading_font)
-    if title_ph is None:
-        # Blueprint/layout didn't expose a title placeholder at idx 0 — the
-        # heading must still render, so fall back to an explicit textbox in
-        # the deck's standard title zone rather than shipping a headless slide.
+    if title_ph is None and not _layout_has_static_heading(slide, "table of contents"):
+        # Blueprint/layout didn't expose a title placeholder at idx 0, and
+        # isn't one of the template layouts that bake its own static "Table
+        # of contents" heading directly into the layout art (not a fillable
+        # placeholder — some templates do this, some don't). Only add the
+        # fallback when neither path already produced a heading, otherwise
+        # this doubles up on top of the layout's own title.
         _add_textbox(slide, CONTENT_L, TITLE_TOP, CONTENT_W, TITLE_H,
                      "Table of Contents", SZ_TITLE, style.title_color,
                      bold=True, font_name=style.heading_font)
