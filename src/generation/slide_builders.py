@@ -451,8 +451,15 @@ def build_toc_slide(prs: Presentation, style: SlideStyle,
                     layout_name: str = None) -> None:
     slide = _add_slide(prs, layout_name or "Content_Basic")
     _apply_composition(slide, style)
-    _fill_ph(slide, 0, "Table of Contents", size=SZ_TITLE, color=style.title_color,
-             bold=True, font_name=style.heading_font)
+    title_ph = _fill_ph(slide, 0, "Table of Contents", size=SZ_TITLE, color=style.title_color,
+                        bold=True, font_name=style.heading_font)
+    if title_ph is None:
+        # Blueprint/layout didn't expose a title placeholder at idx 0 — the
+        # heading must still render, so fall back to an explicit textbox in
+        # the deck's standard title zone rather than shipping a headless slide.
+        _add_textbox(slide, CONTENT_L, TITLE_TOP, CONTENT_W, TITLE_H,
+                     "Table of Contents", SZ_TITLE, style.title_color,
+                     bold=True, font_name=style.heading_font)
     _clear_body_ph(slide)
 
     mid = len(items) // 2 + len(items) % 2
@@ -495,7 +502,15 @@ def build_section_divider(prs: Presentation, style: SlideStyle, title: str,
     _clear_body_ph(slide)
     _place_logo(slide, style)
 
-    _add_textbox(slide, CONTENT_L, 2.80, CONTENT_W, 1.50,
+    # Decorative background art (blob/curve accents from the blueprint) can
+    # land anywhere behind the title on a divider, since there's no card or
+    # body content to occlude it. Give the title a solid backing panel in the
+    # theme's own card color so it stays legible no matter what renders
+    # underneath — same contrast guarantee the theme already provides cards.
+    title_y = 2.80
+    _add_shape(slide, MSO_SHAPE.ROUNDED_RECTANGLE, CONTENT_L - 0.20, title_y - 0.18,
+               CONTENT_W + 0.40, 1.05, fill_color=style.card_bg)
+    _add_textbox(slide, CONTENT_L, title_y, CONTENT_W, 1.50,
                  title, SZ_SECTION, style.title_color,
                  bold=True, font_name=style.heading_font)
 

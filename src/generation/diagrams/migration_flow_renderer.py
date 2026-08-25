@@ -130,12 +130,33 @@ class MigrationFlowRenderer:
 
         bottom_h = len(bottom_bands) * 0.38 + (0.06 if bottom_bands else 0)
         journey_h = 0.32 if journey_labels else 0
-        zones_h = self.content_height - bottom_h - journey_h
+        max_zones_h = self.content_height - bottom_h - journey_h
 
-        # Outer container
+        # Zone height used to be a fixed share of content_height regardless
+        # of how much a zone actually holds — a zone with one small group
+        # still got the full ~5.5" row, leaving roughly half of it empty
+        # with the connector arrows floating in that void. Size the shared
+        # row height to whatever the tallest zone's content actually needs,
+        # capped by the old budget so it never overflows the slide.
+        ratios_preview = [z.get("width_ratio", 1.0) for z in zones]
+        total_ratio_preview = sum(ratios_preview) or 1.0
+        preview_widths = [(r / total_ratio_preview) *
+                          (self.content_width - (len(zones) - 1) * (0.28 + 0.06))
+                          for r in ratios_preview]
+        natural_h = max(
+            (self._estimate_zone_content_h(z, w)
+             for z, w in zip(zones, preview_widths)),
+            default=max_zones_h,
+        )
+        zones_h = min(max(natural_h, 1.3), max_zones_h)
+        total_h = zones_h + journey_h + bottom_h
+
+        # Outer container — sized to what the diagram actually uses, not the
+        # old fixed content_height budget, or shrinking the zones above just
+        # moves the empty space here instead of removing it.
         outer = add_rounded_rectangle(
             self.slide, self.content_left - 0.08, self.content_top - 0.08,
-            self.content_width + 0.16, self.content_height + 0.16,
+            self.content_width + 0.16, total_h + 0.16,
             fill_color="#F7F8FA", line_color="#E0E2E6", line_width=1.0,
         )
         send_to_back(outer, self.slide)
@@ -178,6 +199,54 @@ class MigrationFlowRenderer:
         if bottom_bands:
             band_y = self.content_top + zones_h + journey_h + 0.02
             self._draw_bottom_bands(bottom_bands, band_y)
+
+    # ── Content-height estimation ────────────────────────────
+
+    def _estimate_group_h(self, group: dict, group_w: float) -> float:
+        """Natural height a group needs for its label + items, before padding."""
+        label_h = 0.18 if group.get("label") else 0.0
+        items = group.get("items", [])
+        avail_w = max(0.3, group_w - 0.12)
+        style_hint = group.get("style", "text")
+
+        if not items:
+            items_h = 0.0
+        elif style_hint == "icons":
+            item_total_h = 0.40 + 0.16 + 0.03
+            col_w = max(0.58, min(0.90, avail_w / min(len(items), 4)))
+            cols = max(1, int(avail_w / col_w))
+            rows = -(-len(items) // cols)
+            items_h = rows * item_total_h
+        elif style_hint == "pills":
+            pill_h, gap_x = 0.18, 0.05
+            max_pill_w = max(0.5, avail_w - 2 * gap_x)
+            px, rows = 0.0, 1
+            for item in items:
+                pill_w = min(max_pill_w, max(0.48, len(item) * 0.058 + 0.14))
+                if px + pill_w > avail_w and px > 0:
+                    rows += 1
+                    px = 0.0
+                px += pill_w + gap_x
+            items_h = rows * pill_h + (rows - 1) * 0.04
+        elif style_hint == "flow":
+            items_h = 0.22
+        else:
+            items_h = 0.20
+
+        return label_h + (0.04 if label_h and items_h else 0) + items_h
+
+    def _estimate_zone_content_h(self, zone: dict, zone_w: float) -> float:
+        """Total height a zone's title + groups actually need, plus padding."""
+        groups = zone.get("groups", [])
+        if not groups:
+            return 1.3
+
+        pad = 0.12
+        inner_w = zone_w - pad * 2
+        group_gap = 0.06
+        group_heights = [max(0.35, self._estimate_group_h(g, inner_w) + 0.10)
+                         for g in groups]
+        return 0.22 + sum(group_heights) + (len(groups) - 1) * group_gap + pad
 
     # ── Zone ──────────────────────────────────────────────────
 
