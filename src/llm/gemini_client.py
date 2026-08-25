@@ -16,7 +16,7 @@ from pathlib import Path
 from google import genai
 from google.genai import types
 
-from llm.anthropic_client import SECTION_SCHEMA
+from llm.anthropic_client import SECTION_SCHEMA, REVIEW_SYSTEM_PROMPT
 
 MODEL = "gemini-3.6-flash"
 
@@ -134,6 +134,8 @@ CONTENT QUALITY RULES:
 5. Stats and metrics should be realistic and quantified.
 6. Bullets should be concise (under 15 words each) but specific.
 7. For commercials, use rates in the $150-250/hr range unless specified.
+8. If corporate_overview (or any other section) references Xebia's company scale, use these exact verified figures — do not invent alternate numbers: 6,500+ professionals, 16 countries, 25+ years (founded 2001), $400M FY24 revenue. A separate slide renders these automatically; your text must not contradict them (e.g. never write a different headcount like "5,000+ specialists").
+9. NEVER present an unvalidated quantitative outcome (TCO reduction %, performance improvement %, uptime/downtime claims, "zero downtime", "real-time") as a guaranteed result. Frame every such claim as a target pending validation: "Target 35-40% reduction in platform TCO, to be validated during discovery and benchmarking" — never "This delivers 35% lower TCO." An absolute claim like "0 downtime" must become "minimized downtime through phased migration, parallel validation, and controlled cutover" instead.
 
 CRITICAL RULES:
 - ALWAYS use the customer name and project details provided by the USER. NEVER copy client names or specifics from reference material.
@@ -205,6 +207,55 @@ def generate_proposal_plan(user_input: str, references: list[dict] = None,
 
     result = json.loads(text)
     return _fill_missing_top_level(result)
+
+
+_REVIEW_JSON_NOTE = """
+
+RESPONSE FORMAT: Return a single JSON object (no markdown, no code fences) with the fields
+described above (at minimum "ready": true, plus only the top-level fields and "sections"
+entries you are actually changing — omit anything left as-is). Do not wrap it in a tool
+call or any other structure."""
+
+
+def review_and_improve_plan(plan: dict) -> dict:
+    """Send a generated plan back to Gemini for the same content/flow/layout
+    critique pass Claude gets (see review_and_improve_plan in anthropic_client)
+    — reuses REVIEW_SYSTEM_PROMPT so both providers are held to the same bar.
+    Gemini omits sections it isn't changing exactly like Claude's version, so
+    a partial response can only leave sections unchanged, never blank them."""
+    plan_json = json.dumps(plan, indent=2)
+    user_message = f"Here is the generated proposal plan to review:\n\n{plan_json}"
+
+    response = _call_with_failover(
+        model=MODEL,
+        contents=user_message,
+        config=types.GenerateContentConfig(
+            system_instruction=REVIEW_SYSTEM_PROMPT + _REVIEW_JSON_NOTE,
+            temperature=0.3,
+            max_output_tokens=16000,
+            response_mime_type="application/json",
+        ),
+    )
+
+    text = response.text.strip()
+    if text.startswith("```"):
+        lines = [l for l in text.split("\n") if not l.strip().startswith("```")]
+        text = "\n".join(lines)
+
+    revision = json.loads(text)
+
+    merged = dict(plan)
+    for key in ("title", "customer", "industry", "objective", "storyline", "image_placements"):
+        if revision.get(key):
+            merged[key] = revision[key]
+
+    revised_sections = revision.get("sections") or {}
+    if revised_sections:
+        merged_sections = dict(plan.get("sections", {}))
+        merged_sections.update(revised_sections)
+        merged["sections"] = merged_sections
+
+    return merged
 
 
 def _fill_missing_top_level(result: dict) -> dict:

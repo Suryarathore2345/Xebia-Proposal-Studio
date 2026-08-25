@@ -1,0 +1,34 @@
+{
+  "retail_cpg": [
+    "Helly Hansen", "Sephora", "Compass Group", "Ahold Delhaize", "Tesco",
+    "Heineken", "Unilever", "Albert Heijn", "Levi's", "Adevinta", "Danone", "bol.com"
+  ],
+  "travel_hospitality": [
+    "Delta", "Emirates", "Air India", "Etihad Airways", "Schiphol Group", "DHL",
+    "Maersk", "KLM", "NS International", "Exclusive Resorts", "DB Bahn",
+    "Restaurant Brands International"
+  ],
+  "banking_fintech_insurance": [
+    "Ameriprise Financial", "IndusInd Bank", "CorporateOne", "FIS", "MagMutual",
+    "Barclays", "ING", "ADCB", "Yes Bank", "Al Hilal Bank", "Kotak Mahindra Bank",
+    "IDFC First Bank", "ABN AMRO", "abacai", "Aviva"
+  ],
+  "govt_public_utilities": [
+    "Arabian Drilling", "ADNOC", "Shell", "FedEx", "Vattenfall", "Asellion",
+    "Eneco", "DSM", "TAQA", "Smart Dubai", "Dubai Economy and Tourism",
+    "Royal Commission for AlUla"
+  ],
+  "media_telco_entertainment": [
+    "Amazon MGM Studios", "Disney", "SiriusXM", "dpg media", "Pathe",
+    "Vereniging COIN", "Metro Goldwyn Mayer", "Kinly", "TuneIn", "Vodafone Ziggo",
+    "Airtel Payments Bank", "KPN", "Sky"
+  ],
+  "technology_isvs": [
+    "Keylane", "Planon", "CCS", "Kynetec", "Sage", "Advanced", "WeTransfer",
+    "bswift", "dunnhumby", "ProActive", "ICE Acturis Group"
+  ],
+  "pharma_life_sciences": [
+    "ThermoFisher Scientific", "Novartis", "American Heart Association", "GSK",
+    "Sun Pharma", "emerald", "Cedars Sinai", "Guardian"
+  ]
+}

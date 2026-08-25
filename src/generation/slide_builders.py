@@ -8,6 +8,7 @@ Canvas: 13.333 x 7.500 inches (widescreen 16:9)
 Template: xebia_retail.pptx
 """
 
+import re
 import sys
 from pathlib import Path
 
@@ -545,6 +546,13 @@ def build_executive_summary_slide(prs: Presentation, style: SlideStyle,
 def build_content_slide(prs: Presentation, style: SlideStyle, title: str,
                         body_text: str = "", bullets: list[str] = None,
                         slide_number: int = 0) -> None:
+    if not body_text and not bullets:
+        # This is both the "content" layout and the catch-all fallback for
+        # any unrecognized layout — with no body/bullets the body
+        # placeholder never gets touched and ships as a raw, unfilled
+        # template ghost. Skip rather than show that.
+        return
+
     slide = _add_slide(prs, "Content_Basic")
     _apply_composition(slide, style)
     _fill_ph(slide, 0, title, size=SZ_TITLE, color=style.title_color,
@@ -629,6 +637,12 @@ def build_two_column_slide(prs: Presentation, style: SlideStyle, title: str,
                            left_title: str = "", left_bullets: list[str] = None,
                            right_title: str = "", right_bullets: list[str] = None,
                            slide_number: int = 0) -> None:
+    if not left_bullets and not right_bullets:
+        # Both columns empty means the unfilled PowerPoint placeholders
+        # (left/right title + body) would ship as raw template ghosts —
+        # skip the slide rather than show that.
+        return
+
     slide = _add_slide(prs, "Content_2 Columns")
     _apply_composition(slide, style)
     _fill_ph(slide, 0, title, size=SZ_TITLE, color=style.title_color,
@@ -744,8 +758,12 @@ def build_process_flow_slide(prs: Presentation, style: SlideStyle, title: str,
 
         _add_card(slide, x, card_top, step_w, card_h, style, accent_color=color)
 
+        # The numbered circle above already conveys the ordinal — strip a
+        # leading "1. "/"1) " the LLM sometimes repeats in the label itself,
+        # so the number doesn't show twice.
+        label = re.sub(r"^\d+[.)]\s*", "", step.get("label", ""))
         _add_textbox(slide, x + 0.1, card_top + 0.15, step_w - 0.2, 0.40,
-                     step.get("label", ""), 11, style.title_color, bold=True,
+                     label, 11, style.title_color, bold=True,
                      alignment=PP_ALIGN.CENTER, font_name=style.heading_font)
 
         desc = step.get("description", "")
@@ -765,17 +783,19 @@ def build_process_flow_slide(prs: Presentation, style: SlideStyle, title: str,
 
 def build_comparison_table_slide(prs: Presentation, style: SlideStyle, title: str,
                                  headers: list[str], rows: list[list[str]],
-                                 slide_number: int = 0) -> None:
+                                 caption: str = "", slide_number: int = 0) -> None:
     slide = _add_slide(prs, "Content_Basic")
     _apply_composition(slide, style)
     _fill_ph(slide, 0, title, size=SZ_TITLE, color=style.title_color,
              bold=True, font_name=style.heading_font)
     _clear_body_ph(slide)
 
+    caption_h = 0.35 if caption else 0.0
     num_cols = len(headers)
     num_rows = min(len(rows) + 1, 12)
     row_height, table_top = _distribute_rows(num_rows, min_h=0.35, max_h=0.75, gap=0.0,
-                                             zone_top=CONTENT_TOP + 0.15, zone_h=CONTENT_H - 0.15)
+                                             zone_top=CONTENT_TOP + 0.15,
+                                             zone_h=CONTENT_H - 0.15 - caption_h)
     table_w = min(CONTENT_W, 11.8)
 
     table_shape = slide.shapes.add_table(
@@ -812,6 +832,12 @@ def build_comparison_table_slide(prs: Presentation, style: SlideStyle, title: st
                 p.font.color.rgb = _rgb(style.body_color)
                 p.font.name = style.body_font
 
+    if caption:
+        _add_textbox(slide, CONTENT_L, table_top + row_height * num_rows + 0.06,
+                     table_w, caption_h - 0.06,
+                     caption, SZ_TINY, style.body_color,
+                     font_name=style.body_font)
+
 
 # ── STATS HIGHLIGHT ───────────────────────────────────────────
 
@@ -843,8 +869,15 @@ def build_stats_highlight_slide(prs: Presentation, style: SlideStyle, title: str
                    x + (card_w - icon_size) / 2, card_y + 0.30,
                    icon_size, icon_size, fill_color=color)
 
+        # The LLM occasionally emits a value that's a short phrase rather
+        # than a bare number/percentage (e.g. "0 Downtime" instead of
+        # value="0" + label="Downtime") — at a fixed 36pt that wraps and
+        # overflows into the label below it. Scale down for longer values
+        # so it always fits within its box instead of bleeding over.
+        value_text = str(stat.get("value", ""))
+        value_size = 36 if len(value_text) <= 6 else max(16, 36 - 2 * (len(value_text) - 6))
         _add_textbox(slide, x + 0.1, card_y + 1.0, card_w - 0.2, 0.80,
-                     str(stat.get("value", "")), 36, color,
+                     value_text, value_size, color,
                      bold=True, alignment=PP_ALIGN.CENTER, font_name=style.heading_font)
 
         _add_textbox(slide, x + 0.1, card_y + 1.85, card_w - 0.2, 0.40,
@@ -862,6 +895,12 @@ def build_stats_highlight_slide(prs: Presentation, style: SlideStyle, title: str
 
 def build_key_value_slide(prs: Presentation, style: SlideStyle, title: str,
                           pairs: list[dict], slide_number: int = 0) -> None:
+    if not pairs:
+        # A title with no pairs (e.g. an under-generated case study) would
+        # render as a near-blank slide with nothing but a heading — skip it
+        # rather than ship a slide with no actual content.
+        return
+
     slide = _add_slide(prs, "Content_Basic")
     _apply_composition(slide, style)
     _fill_ph(slide, 0, title, size=SZ_TITLE, color=style.title_color,
@@ -1407,6 +1446,34 @@ def build_challenges_slide(prs: Presentation, style: SlideStyle, title: str,
 
 # ── GLOBAL PRESENCE ───────────────────────────────────────────
 
+_MAP_ASSET = _LOGO_DIR.parent / "maps" / "world_presence_map.png"
+_MAP_PX_W, _MAP_PX_H = 1532, 634
+# Equirectangular fit calibrated against Xebia's own reference deck's map
+# graphic (least-squares fit of known hub lon/lat to that image's pixels).
+_MAP_LON_A, _MAP_LON_B = 5.15818, 706.866   # px_x = A * lon + B
+_MAP_LAT_A, _MAP_LAT_B = -5.76466, 358.188  # px_y = A * lat + B
+
+# (country, lon, lat, label offset direction as (dx, dy) in inches)
+_GLOBAL_HUBS = [
+    ("USA", -122.33, 47.61, (-0.75, -0.05)),
+    ("Canada", -79.38, 43.65, (0.15, -0.30)),
+    ("Colombia", -74.07, 4.71, (0.20, 0.10)),
+    ("Spain", -6.20, 36.46, (-0.55, 0.10)),
+    ("UK", -0.13, 51.51, (-0.60, -0.05)),
+    ("Netherlands", 5.18, 52.22, (-0.20, -0.35)),
+    ("Belgium", 4.40, 51.22, (-0.75, 0.10)),
+    ("Germany", 8.68, 50.11, (0.15, -0.20)),
+    ("Switzerland", 8.54, 47.37, (0.45, 0.30)),
+    ("Poland", 21.01, 52.23, (0.20, -0.30)),
+    ("Saudi Arabia", 46.68, 24.71, (-0.55, 0.15)),
+    ("UAE", 55.27, 25.20, (0.40, 0.35)),
+    ("India", 77.03, 28.46, (0.20, -0.35)),
+    ("Singapore", 103.82, 1.35, (0.20, 0.15)),
+    ("Vietnam", 106.63, 10.82, (0.20, -0.20)),
+    ("Australia", 144.96, -37.81, (0.20, 0.15)),
+]
+
+
 def build_global_presence_slide(prs: Presentation, style: SlideStyle,
                                 slide_number: int = 0) -> None:
     slide = _add_slide(prs, "Content_Basic")
@@ -1415,17 +1482,32 @@ def build_global_presence_slide(prs: Presentation, style: SlideStyle,
              bold=True, font_name=style.heading_font)
     _clear_body_ph(slide)
 
-    add_world_map(slide, style.palette.primary)
+    map_top = CONTENT_TOP
+    map_h = 3.45
+    map_w = map_h * (_MAP_PX_W / _MAP_PX_H)
+    map_x = CONTENT_L + (CONTENT_W - map_w) / 2
 
-    _add_textbox(slide, CONTENT_L, CONTENT_TOP, CONTENT_W, 0.40,
-                 "5,000+ experts across 16 countries delivering digital transformation",
-                 13, style.body_color, alignment=PP_ALIGN.CENTER,
-                 font_name=style.body_font)
+    if _MAP_ASSET.exists():
+        slide.shapes.add_picture(str(_MAP_ASSET), Inches(map_x), Inches(map_top),
+                                  width=Inches(map_w), height=Inches(map_h))
+
+        for name, lon, lat, (dx, dy) in _GLOBAL_HUBS:
+            px = _MAP_LON_A * lon + _MAP_LON_B
+            py = _MAP_LAT_A * lat + _MAP_LAT_B
+            dot_x = map_x + (px / _MAP_PX_W) * map_w
+            dot_y = map_top + (py / _MAP_PX_H) * map_h
+            label_w = 1.1
+            label_x = dot_x + dx - (label_w / 2 if dx == 0 else 0)
+            _add_textbox(slide, label_x, dot_y + dy, label_w, 0.22,
+                         name, 7, style.palette.primary, bold=True,
+                         alignment=PP_ALIGN.CENTER, font_name=style.heading_font)
+    else:
+        add_world_map(slide, style.palette.primary)
 
     cycle = [style.palette.primary, style.palette.accent1,
              style.palette.secondary, style.palette.accent2]
-    stats = [("5,000+", "Experts"), ("16", "Countries"),
-             ("25+", "Years"), ("1,000+", "Clients")]
+    stats = [("6,500+", "Professionals"), ("16", "Countries"),
+             ("25+", "Years"), ("$400M", "FY24 Revenue")]
     card_w = 2.1
     gap = 0.50
     total_w = len(stats) * card_w + (len(stats) - 1) * gap
@@ -1442,6 +1524,139 @@ def build_global_presence_slide(prs: Presentation, style: SlideStyle,
         _add_textbox(slide, x + 0.1, y + 0.65, card_w - 0.2, 0.35,
                      label, SZ_BODY, style.body_color, alignment=PP_ALIGN.CENTER,
                      font_name=style.body_font)
+
+
+# ── CUSTOMER PORTFOLIO ───────────────────────────────────────
+
+_PORTFOLIO_DIR = _LOGO_DIR / "customer_portfolio"
+_PORTFOLIO_CATEGORIES = [
+    ("retail_cpg", "Retail & CPG"),
+    ("travel_hospitality", "Travel &\nHospitality"),
+    ("banking_fintech_insurance", "Banking, Fintech\n& Insurance"),
+    ("govt_public_utilities", "Govt., Public\n& Utilities"),
+    ("media_telco_entertainment", "Media, Telco\n& Entertainment"),
+    ("technology_isvs", "Technology\n& ISVs"),
+    ("pharma_life_sciences", "Pharma &\nLife Sciences"),
+]
+
+
+def _load_portfolio_names() -> dict:
+    names_path = _PORTFOLIO_DIR / "names.json"
+    if not names_path.exists():
+        return {}
+    try:
+        import json
+        return json.loads(names_path.read_text(encoding="utf-8"))
+    except Exception:
+        return {}
+
+
+def _normalize_company(name: str) -> str:
+    n = name.lower().strip()
+    if n.startswith("the "):
+        n = n[4:]
+    for suffix in (" inc.", " inc", " corp.", " corp", " corporation", " company",
+                   " co.", " co", " ltd.", " ltd", " llc", " group", " n.v.", " nv"):
+        if n.endswith(suffix):
+            n = n[: -len(suffix)]
+    return n.strip()
+
+
+def _load_portfolio_logos(exclude_customer: str | None = None) -> list[tuple[str, list]]:
+    """[(display_label, [logo_path, ...]), ...] for categories with assets on disk.
+    Excludes any logo whose known name matches exclude_customer, so a deck
+    pitched to a company that happens to also be an extracted logo (e.g. a
+    proposal for Disney) doesn't show that company its own logo back."""
+    names_by_category = _load_portfolio_names()
+    excl = _normalize_company(exclude_customer) if exclude_customer else None
+
+    result = []
+    for slug, label in _PORTFOLIO_CATEGORIES:
+        folder = _PORTFOLIO_DIR / slug
+        if not folder.exists():
+            continue
+        files = sorted(folder.glob("*.png"))
+        if excl:
+            names = names_by_category.get(slug, [])
+            kept = []
+            for i, f in enumerate(files):
+                norm = _normalize_company(names[i]) if i < len(names) else ""
+                is_match = norm and (
+                    norm == excl or
+                    (len(norm) >= 4 and len(excl) >= 4 and (norm in excl or excl in norm))
+                )
+                if is_match:
+                    continue
+                kept.append(f)
+            files = kept
+        if files:
+            result.append((label, files))
+    return result
+
+
+def has_customer_portfolio_logos() -> bool:
+    """Whether any approved client-logo assets exist to render this slide."""
+    return bool(_load_portfolio_logos())
+
+
+def build_customer_portfolio_slide(prs: Presentation, style: SlideStyle,
+                                   slide_number: int = 0,
+                                   customer_name: str | None = None) -> None:
+    """Logo wall of real Xebia clients grouped by industry, sourced from
+    xebia_design_system/assets/logos/customer_portfolio/. Skipped
+    automatically when that directory is empty (no approved logo set)."""
+    columns = _load_portfolio_logos(exclude_customer=customer_name)
+    if not columns:
+        return
+
+    slide = _add_slide(prs, "Content_Basic")
+    _apply_composition(slide, style)
+    _fill_ph(slide, 0, "Xebia Customer Portfolio", size=SZ_TITLE, color=style.title_color,
+             bold=True, font_name=style.heading_font)
+    _clear_body_ph(slide)
+
+    from PIL import Image
+
+    num_cols = len(columns)
+    gap_x = 0.15
+    col_w = (CONTENT_W - (num_cols - 1) * gap_x) / num_cols
+    header_h = 0.50
+    stack_top = CONTENT_TOP + header_h
+    available_h = CONTENT_H - header_h - 0.15
+    gap_y = 0.05
+
+    for i, (label, paths) in enumerate(columns):
+        x = CONTENT_L + i * (col_w + gap_x)
+
+        _add_textbox(slide, x, CONTENT_TOP, col_w, header_h,
+                     label, 10, style.palette.primary, bold=True,
+                     alignment=PP_ALIGN.CENTER, font_name=style.heading_font)
+
+        n = len(paths)
+        logo_h = max(0.15, min(0.32, (available_h - (n - 1) * gap_y) / n))
+        stack_h = n * logo_h + (n - 1) * gap_y
+        y = stack_top + max(0.0, (available_h - stack_h) / 2)
+
+        for path in paths:
+            try:
+                with Image.open(path) as im:
+                    aspect = im.width / im.height
+            except Exception:
+                aspect = 2.5
+
+            w, h = logo_h * aspect, logo_h
+            if w > col_w - 0.10:
+                w = col_w - 0.10
+                h = w / aspect
+
+            try:
+                slide.shapes.add_picture(str(path), Inches(x + (col_w - w) / 2),
+                                          Inches(y + (logo_h - h) / 2),
+                                          width=Inches(w), height=Inches(h))
+            except Exception:
+                pass
+
+            y += logo_h + gap_y
 
 
 # ── XEBIA CAPABILITIES ───────────────────────────────────────
@@ -1634,7 +1849,8 @@ def build_slide_by_layout(prs: Presentation, layout: str, style: SlideStyle,
                 slide_number=slide_number)
     elif layout == "comparison_table":
         builder(prs, style, title=data.get("title", ""), headers=data.get("headers", []),
-                rows=data.get("rows", []), slide_number=slide_number)
+                rows=data.get("rows", []), caption=data.get("caption", ""),
+                slide_number=slide_number)
     elif layout == "stats_highlight":
         builder(prs, style, title=data.get("title", ""), stats=data.get("stats", []),
                 slide_number=slide_number)

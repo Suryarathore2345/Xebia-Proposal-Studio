@@ -61,6 +61,7 @@ Include "table_of_contents" as the SECOND storyline entry (right after "cover") 
   "layout": "icon_grid",
   "items": [{"label": "capability area", "description": "1-2 sentence detail"}, ...] (6-8 items covering relevant Xebia capabilities)
 }
+Ground this in evidence relevant to THIS project, not generic consulting positioning — e.g. instead of "Accelerated Migration Tooling" (a capability claim with no proof), write something like "Proven Oracle/SQL Server-to-Fabric Migration Accelerators — proprietary schema conversion tooling used across enterprise data platform engagements." Prefer items that connect to the customer's actual technologies, industry, or migration type over generic capability-statement labels.
 
 "understanding_of_scope": {
   "title": "Understanding of Scope",
@@ -118,9 +119,15 @@ ARCHITECTURE IS MANDATORY. Always include at least one "architecture" or "migrat
 
 Two layout options for architecture content — pick based on what the proposal needs:
 - "architecture": simple stacked layers, top to bottom. Good for a single clean overview. 4-6 layers, 2-4 components each, colors from blue/teal/purple/green/orange.
-- "migration_flow": a left-to-right zone diagram (3-6 zones), each with 2-5 groups of 2-5 short items. Prefer it whenever the architecture is complex enough to benefit from a visual flow. zones: color one of orange (source/current-state), teal (migration/transformation), blue (target cloud), purple (data/analytics platform), green (outcomes/value), dark (governance) — don't repeat colors on adjacent zones. width_ratio: 1.0 standard, 0.5-0.7 for a narrow outcome zone (needs at least ~1.2 width_ratio-equivalent space for "pills" or "icons" styles to render — keep those groups in normal or wide zones, not the narrowest ones). groups: "style":"icons" for real, named technologies/products (this is the ONLY style that renders an actual icon image per item — use it for Azure/AWS/Fabric services, databases, and other recognized tools, e.g. "Azure Data Factory", "Oracle Database", "Power BI"); "pills" for short text badges with no icon (generic/non-recognized items); "flow" only for a strategy sequence (e.g. Rehost → Replatform → Refactor); "text" otherwise. Item labels: 2-4 words, no sentences. bottom_bands (0-2) for cross-cutting concerns (governance, security, monitoring). journey_labels (0-2) to call out the 1-2 major transformation stories.
+- "migration_flow": a left-to-right zone diagram (3-6 zones), each with 2-5 groups of 2-5 short items. Prefer it whenever the architecture is complex enough to benefit from a visual flow. zones: color one of orange (source/current-state), teal (migration/transformation), blue (target cloud), purple (data/analytics platform), green (outcomes/value), dark (governance) — don't repeat colors on adjacent zones. width_ratio: 1.0 standard, 0.5-0.7 for a narrow outcome zone (needs at least ~1.2 width_ratio-equivalent space for "pills" or "icons" styles to render — keep those groups in normal or wide zones, not the narrowest ones). groups: "style":"icons" for real, named technologies/products (this is the ONLY style that renders an actual icon image per item — use it for Azure/AWS/Fabric services, databases, and other recognized tools, e.g. "Azure Data Factory", "Oracle Database", "Power BI"); "pills" for short text badges with no icon (generic/non-recognized items); "flow" only for a strategy sequence (e.g. Rehost → Replatform → Refactor); "text" otherwise. Item labels: 2-4 words, no sentences. bottom_bands (at least 1 for the target-state diagram — see CROSS-CUTTING GOVERNANCE below; up to 2) for cross-cutting concerns (identity, RBAC, secrets, governance, monitoring). journey_labels (0-2) to call out the 1-2 major transformation stories.
 
 For a data platform / migration proposal, generate 2-3 DISTINCT migration_flow diagrams that each earn their place — e.g. "Current-State Architecture" (today's fragmented/legacy setup), "Target Architecture" or "End-to-End Data Flow" (the proposed platform, source to consumption), and optionally a third focused view (e.g. medallion/lakehouse layers, or the analytics/consumption layer) — never repeat the same zones/content across multiple diagrams. For a smaller or simpler proposal, one "architecture" slide is enough — don't pad with diagrams that don't add information.
+
+DEPTH REQUIREMENT — the target-state diagram (architecture or migration_flow, whichever is the main one) must be an executable enterprise architecture, not a shallow "Sources → Ingestion → Consumption" sketch. At minimum it must show, as distinct zones/layers (using the platform's real terminology, not necessarily these exact names): (1) a raw/bronze ingestion-landing layer, (2) a validated/standardized/silver layer, (3) a curated/business-ready/gold layer — don't collapse these three into one "storage" zone — (4) a named connectivity/ingestion mechanism appropriate to the source (e.g. self-hosted integration runtime for on-prem, CDC/incremental capture for near-real-time, ExpressRoute/VPN for network), and (5) a semantic/serving layer distinct from raw data consumption (e.g. semantic models, not just "reports read from the warehouse"). Skipping straight from source to a single "storage" zone to BI is too shallow for an enterprise proposal.
+
+CROSS-CUTTING GOVERNANCE — every architecture/migration_flow diagram in an enterprise-scale proposal (large team, regulated industry, or explicitly complex engagement) MUST include at least one bottom_band covering identity, access/RBAC, secrets management, data governance, and monitoring as named items (e.g. "Entra ID", "Key Vault", "Purview", "Azure Monitor") — not folded into a single generic "security" icon. Treat this as a required layer of the architecture, not decoration.
+
+TOOL-RESPONSIBILITY CLARITY — when two technologies could plausibly do the same job in this architecture (e.g. Azure Data Factory vs. Fabric Pipelines/Dataflows Gen2 for orchestration; Azure Blob Storage vs. OneLake for storage), don't list both in the same zone/group as if they're interchangeable or redundant — either (a) pick ONE as the primary pattern for that responsibility and don't include the other, or (b) if you genuinely need both, give each a distinct, named role via the group label or a short qualifier (e.g. group "Hybrid Connectivity" → "Azure Data Factory (on-prem source extraction)" is fine as one item's context, but don't put "Azure Data Factory" and "Fabric Data Factory Pipelines" side by side with no stated difference). The reader must never have to guess why both exist.
 
 NEVER include both an "architecture" (pyramid layers) slide AND a "migration_flow" slide that describe the same breakdown (e.g. both walking through the identical Bronze/Silver/Gold medallion layers) — that reads as padding, not depth. If you use both layout types in one proposal, they must serve genuinely different purposes: e.g. the "architecture" slide is the single canonical layer reference (used once), while "migration_flow" diagrams are flow/lineage-oriented (source-to-consumption data movement) or show a distinct lifecycle view (current-state vs. target-state) — not a second rendering of the same layer list in a different shape.
 
@@ -142,9 +149,16 @@ OPTIONAL — options considered: when there are genuinely 2+ viable architectura
 
 "delivery_approach": {
   "title": "Delivery Approach",
-  "layout": "process_flow",
-  "steps": [{"label": "Phase Name", "description": "what happens"}, ...] (4-6 steps)
+  "slides": [
+    {"title": "Delivery Approach", "layout": "process_flow",
+     "steps": [{"label": "Phase Name", "description": "what happens"}, ...] (4-6 steps)},
+    {"title": "Migration Wave Strategy", "layout": "process_flow",
+     "steps": [{"label": "Wave 0: Pilot", "description": "scope (which workload/system) — duration — exit criteria to proceed to next wave"}, ...] (4-6 waves, SITUATIONAL — see below)},
+    {"title": "Data Quality & Reconciliation Approach", "layout": "process_flow",
+     "steps": [{"label": "Profile", "description": "what happens at this stage"}, ...] (5-7 steps: profile source data → define validation rules → validate → reconcile record counts/aggregates → exception management → business sign-off — SITUATIONAL, see below)}
+  ]
 }
+The first slide (delivery methodology) is always required. The other two are SITUATIONAL — include "Migration Wave Strategy" whenever the engagement involves migrating multiple systems/workloads with different risk profiles (a real migration should never appear as one undifferentiated blob — sequence it pilot-first, low-risk-before-high-risk, with an explicit exit criterion per wave before the next one starts). Include "Data Quality & Reconciliation Approach" whenever the engagement involves migrating existing data (not a greenfield build) — every migration needs a concrete answer to "how do we know the new system's data is correct," not just an implied assumption. Omit either slide for engagements where it doesn't apply (e.g. a pure greenfield build has no migration waves; a proposal with no significant data volume doesn't need a reconciliation slide).
 
 "timeline": {
   "title": "Project Timeline",
@@ -170,8 +184,9 @@ This renders as a real week-ruled Gantt chart (bars, not description cards) — 
     ... (one row per team role)
   ],
   "total": "grand total",
-  "assumptions": ["Payment terms", "Travel excluded", "Rate validity period", ...]
+  "assumptions": ["Payment terms", "Travel excluded", "Rate validity period", "This is Xebia's professional services investment only — excludes the customer's cloud consumption and third-party licensing (see Licensing & Infrastructure Estimate)", ...]
 }
+This total is PROFESSIONAL SERVICES ONLY — always include an assumption line making that explicit (see example above) so it can never be read as the complete program cost. When "licensing_estimate" is also included in this proposal, its content must make clear that Professional Services (this section) + Cloud Consumption + Licensing together form the estimated Year-1 TCO — do not let the two totals sit unconnected.
 
 SITUATIONAL SECTIONS — "payment_milestones", "support_model", "licensing_estimate" below are OPTIONAL. Include them for enterprise/complex engagements (large team, multi-phase delivery, regulated industry) where a real proposal would need this level of commercial detail. Skip all three for smaller or simpler proposals — don't pad every deck with them regardless of deal size. When included, keep "commercials", "payment_milestones", "support_model", and "licensing_estimate" as ONE CONTIGUOUS block in that order (commercials first) — readers need the total investment before milestones/support/licensing detail, and interleaving them with "risk_mitigation" or other sections breaks that financial narrative.
 
@@ -183,22 +198,33 @@ SITUATIONAL SECTIONS — "payment_milestones", "support_model", "licensing_estim
      "rows": [["Mobilization", "25%", "Contract signed, project kickoff"], ...] (3-5 milestones)}
   ]
 }
+Trigger conditions must be concrete and verifiable, not vague process statements — "Decommissioning plan initialized" is not an acceptance criterion; "Production cutover completed, reconciliation results accepted, and operational handoff signed off by [customer]" is. Every trigger should describe a deliverable state a client can actually verify happened, and the final milestone should name who signs off.
 
 "support_model": {
   "title": "Support Model",
-  "layout": "icon_grid",
-  "items": [{"label": "Support tier name (e.g. 'L1 — Business Hours')", "description": "response/resolution SLA and scope"}, ...] (3-5 tiers)
+  "slides": [
+    {"title": "Support Model", "layout": "icon_grid",
+     "items": [{"label": "Support tier name (e.g. 'L1 — Business Hours')", "description": "response/resolution SLA and scope"}, ...] (3-5 tiers)},
+    {"title": "Operating Model", "layout": "comparison_table",
+     "headers": ["Function", "Customer", "Xebia", "Notes"],
+     "rows": [["Data platform operations", "", "Owner", "Xebia runs day-to-day platform operations post-go-live"], ["Business data ownership", "Owner", "", "..."], ["Incident escalation", "Raises", "Resolves", "..."], ["Capacity/cost management", "Approves", "Recommends", "..."], ["Release management", "Approves", "Executes", "..."]] (5-8 rows, SITUATIONAL — see below)}
+  ]
 }
+The "Operating Model" slide is SITUATIONAL — include it whenever support_model is included (it answers "who owns what after go-live," which every support conversation needs). Keep rows short and concrete: name a real operational function (not "Governance" alone — say what governance activity), and put an owner (or "Owner"/"Approves"/"Executes"/"Raises"/"Resolves" etc.) in exactly one of Customer/Xebia per row unless it's genuinely shared — don't leave both blank or both filled with a vague "Shared" for every row, that defeats the point of a RACI-style table.
 
 "licensing_estimate": {
   "title": "Licensing & Infrastructure Estimate",
   "slides": [
     {"title": "Licensing & Infrastructure Estimate", "layout": "comparison_table",
      "headers": ["Component", "Est. Monthly Cost", "Est. Annual Cost"],
-     "rows": [["Microsoft Fabric Capacity (F64)", "$8,400", "$100,800"], ...] (3-6 components)}
+     "rows": [["Microsoft Fabric Capacity (F64)", "$8,400", "$100,800"], ...] (3-6 components),
+     "caption": "Illustrative estimate — subject to discovery, workload sizing, and Microsoft/vendor commercial validation."},
+    {"title": "Estimated Year-1 Investment", "layout": "stats_highlight",
+     "stats": [{"value": "$1.3M", "label": "Professional Services (Xebia)"}, {"value": "$120K", "label": "Cloud & Fabric Consumption (Est.)"}, {"value": "$45K", "label": "Licensing (Est.)"}, {"value": "~$1.5M", "label": "Estimated Year-1 Total"}]}
   ]
 }
-Keep this separate from "commercials" (which covers Xebia's services/labor cost only) — this section covers the customer's own cloud/platform spend, billed directly to them.
+The "Estimated Year-1 Investment" slide is SITUATIONAL but strongly preferred whenever both "commercials" and "licensing_estimate" are included — it's the one place the reader sees the FULL cost picture in one glance instead of two disconnected tables. The first 2-3 stats break down the components (use commercials' actual "total" for Professional Services, and this section's own annual sum for Cloud/Fabric — keep licensing/networking as a separate stat only if the table has a distinct line for it); the LAST stat is always the sum of the others, clearly labeled as an estimate/total. Every value here must stay numerically consistent with the totals shown elsewhere in commercials and licensing_estimate — never invent a different number for the same thing. Keep each "value" short (a dollar figure or "~$X" range) — per the content quality rules, never a multi-word phrase.
+Keep this separate from "commercials" (which covers Xebia's services/labor cost only) — this section covers the customer's own cloud/platform spend, billed directly to them. Always include the "caption" field exactly as shown above (or an equivalent illustrative/subject-to-validation disclaimer) — these figures are always assumptions (region, pricing model, utilization, concurrency) that the deck doesn't otherwise state, so they must never be presented as firm quotes.
 
 "risk_mitigation": {
   "title": "Risk Mitigation",
@@ -208,33 +234,54 @@ Keep this separate from "commercials" (which covers Xebia's services/labor cost 
       "layout": "challenges",
       "challenges": [
         {"challenge": "specific risk", "impact": "business impact if unmitigated", "solution": "concrete mitigation strategy"},
-        ... (3-5 risks)
+        ... (3-5 risks — for a data migration, at least one MUST cover business continuity/cutover: e.g. challenge="Production disruption during cutover", solution naming the actual mechanism — parallel run, rollback trigger conditions, and RPO/RTO targets ("to be confirmed during discovery based on workload criticality" if not yet known — but the topic must be addressed, not silently absent))
       ]
-    }
+    },
+    {"title": "Key Technical Assumptions", "layout": "content",
+     "bullets": ["Source-system access and credentials will be provided by [customer]", "Named SMEs will be available for discovery and UAT", "..."] (6-10 assumptions, SITUATIONAL — see below)}
   ]
 }
+The "Key Technical Assumptions" slide is SITUATIONAL — include it for any engagement of meaningful size/complexity (it almost always applies to enterprise migrations). These are TECHNICAL assumptions (source access, SME availability, network readiness, data volume TBC during profiling, security requirements TBC during discovery, scope boundaries like "application redesign is out of scope unless added") — distinct from the commercial assumptions in "commercials" (payment terms, rate validity). Don't duplicate commercial assumptions here.
 
 "case_studies": {
   "title": "Relevant Experience",
   "slides": [
     {"title": "Client Name – Project", "layout": "key_value", "pairs": [
-      {"key": "Client", "value": "..."},
+      {"key": "Client", "value": "anonymized if needed, e.g. 'Global Media & Entertainment Enterprise'"},
       {"key": "Challenge", "value": "..."},
+      {"key": "Scale", "value": "quantified scope, e.g. '80 TB migrated · 12 source systems · 200+ reports'"},
       {"key": "Solution", "value": "..."},
+      {"key": "Timeline", "value": "e.g. '5 months'"},
       {"key": "Impact", "value": "quantified result"},
       {"key": "Technologies", "value": "..."}
     ]},
-    ... (2-3 case studies)
+    ... (2-3 case studies, same industry/technology domain as this proposal where possible)
   ]
 }
+Always include "Scale" and "Timeline" — a case study without a sense of size and duration reads as generic marketing, not evidence. If the real figures aren't known, use plausible, specific-sounding illustrative figures rather than omitting the field (this is example/reference material, not a factual claim about Xebia to a specific customer the way commercials/architecture are).
 
 "next_steps": {
   "title": "Next Steps",
-  "layout": "process_flow",
-  "steps": [{"label": "Step", "description": "action item"}, ...] (3-5 steps)
+  "slides": [
+    {"title": "Next Steps", "layout": "process_flow",
+     "steps": [{"label": "Step", "description": "action item"}, ...] (3-5 steps)},
+    {"title": "Roles & Responsibilities", "layout": "two_column",
+     "left": {"title": "[Customer] Responsibilities", "bullets": ["Nominate technical SMEs for discovery and UAT", "Provide source-system access and credentials", "Confirm security and compliance requirements", "..."]},
+     "right": {"title": "Xebia Responsibilities", "bullets": ["Run discovery and workload assessment", "Produce target architecture and migration plan", "Confirm sizing and commercial assumptions", "..."]}}
+  ]
 }
+The "Roles & Responsibilities" slide should always accompany next_steps for engagements of meaningful size — mobilization only works if both sides know what they own; a one-sided action list reads as incomplete. Use the actual customer name in the left column title.
 
 "closing": {"title": "Thank You", "contact_name": "...", "contact_email": "...", "body": "..."}
+
+"appendix": {
+  "title": "Appendix",
+  "slides": [
+    {"title": "Glossary", "layout": "key_value", "pairs": [{"key": "Term/Acronym", "value": "plain-language definition"}, ...] (6-12 terms, SITUATIONAL)},
+    {"title": "Detailed Licensing Assumptions", "layout": "content", "bullets": ["region, pricing model, and concurrency assumptions behind the licensing_estimate figures", ...] (4-8 bullets, SITUATIONAL)}
+  ]
+}
+RARELY NEEDED — only include "appendix" when it adds real value: a glossary when the proposal leans on acronyms/jargon the client may not use internally, or detailed licensing assumptions when licensing_estimate's figures carry enough caveats to deserve their own backup slide. Skip it entirely for a normal-length proposal — this is reference material for a technical audience digging deeper, not a default section. If included, place "appendix" as the LAST entry in "storyline", after "closing" — an appendix belongs after the pitch ends, not before it.
 
 AVAILABLE SLIDE LAYOUTS (choose the best one for each piece of content):
 - "content": title + body + bullets. For general text.
@@ -299,6 +346,8 @@ CONTENT QUALITY RULES:
 10. For commercials, use rates in the $150-250/hr range unless specified. Calculate hours realistically based on timeline and team size.
 11. EVERY slide must have an "image_query" field for stock photo fetching.
 12. Include "payment_milestones", "support_model", and "licensing_estimate" only for enterprise/complex engagements (see their schemas above) — omit them for smaller or simpler proposals rather than padding every deck with the same sections regardless of deal size.
+13. If corporate_overview (or any other section) references Xebia's company scale, use these exact verified figures — do not invent alternate numbers: 6,500+ professionals, 16 countries, 25+ years (founded 2001), $400M FY24 revenue. A separate slide renders these automatically; your text must not contradict them (e.g. never write a different headcount like "5,000+ specialists").
+14. NEVER present an unvalidated quantitative outcome (TCO reduction %, performance improvement %, uptime/downtime claims, "zero downtime", "real-time") as a guaranteed result — these depend on data volume, workload patterns, concurrency, and design decisions not yet made. Frame every such claim as a target pending validation: write "Target 35-40% reduction in platform TCO, to be validated during discovery and benchmarking" — never "This delivers 35% lower TCO." Applies everywhere a number like this appears: executive_summary key_points, proposed_solution's stats_highlight, case_studies impact figures. An absolute claim like "0 downtime" must become "minimized downtime through phased migration, parallel validation, and controlled cutover" — replace the number with the mechanism if there's no real baseline behind it.
 
 CRITICAL RULES:
 - ALWAYS use the customer name and project details provided by the USER. NEVER copy or reuse organization names, project names, client names, contact details, or specific business context from reference material.
@@ -315,9 +364,18 @@ Check the plan against this checklist, in order of priority:
 1. CONTENT: generic filler, vague claims, missing quantification, sections that don't mention the actual customer/industry/technologies.
 2. FLOW: does the storyline read as a coherent narrative (problem → approach → proof → ask)? Are any mandatory sections thin or missing?
 3. LAYOUT VARIETY: is "content" layout overused? Are at least 6-7 different layout types used across the deck?
-4. ARCHITECTURE: is the architecture section realistic, with real technology names appropriate to this project, in a sensible layer order?
-5. CONSISTENCY: do technology names, customer name, and numbers stay consistent across every section? Do stats in commercials match the team/timeline described elsewhere?
-6. COMPLETENESS: any section with empty arrays, placeholder text, or missing required fields for its layout?
+4. ARCHITECTURE: is the architecture section realistic, with real technology names appropriate to this project, in a sensible layer order? Does the target-state diagram meet the DEPTH REQUIREMENT above (raw/bronze, validated/silver, curated/gold shown as distinct layers — not collapsed into one "storage" zone; a named connectivity/ingestion mechanism; a semantic/serving layer)? Does it have the required cross-cutting governance bottom_band (identity, RBAC, secrets, governance, monitoring as named items)? If either is missing or too shallow, rewrite the diagram — this is one of the most common gaps.
+5. CONSISTENCY: do technology names, customer name, and numbers stay consistent across every section? Specifically check these recurring failure patterns:
+   - team_structure's "members" list must have the exact same headcount as commercials' "rows" — every billed role needs a matching team member (and vice versa), not a silently-added extra line item like "DevOps Engineer" with no bio.
+   - If commercials/payment_milestones' assumptions say "Time & Materials", payment_milestones must NOT be a fixed "% of contract value" schedule (that's a Fixed-Price pattern) — either drop payment_milestones for T&M engagements or change the assumption to Fixed-Price, whichever matches the actual commercials structure.
+   - delivery_approach's phases and timeline's phases describe the same project plan — they must match in count and use the same (or at least clearly corresponding) phase names, not independently-invented phase breakdowns.
+   - Any week ranges mentioned outside the timeline section (e.g. a "4-week parallel run" in risk_mitigation, a hypercare window in support_model) must be consistent with the timeline's phase weeks — don't let support_model describe hypercare as concurrent with a parallel-run/cutover window if the timeline shows them as sequential, and don't state a duration (e.g. "4-week parallel run") that doesn't match the corresponding week range elsewhere in the plan.
+   - stats_highlight and other "value" fields must be a short number/percentage/label (e.g. "0", "60%", "$1.2M") — never a multi-word phrase; put any descriptive words in the "label" field instead (e.g. value="0", label="Downtime" — not value="0 Downtime").
+   - Any percentage/quantified claim repeated in more than one place (e.g. TCO reduction in executive_summary vs proposed_solution's stats, or a rate-validity window) must use the identical number everywhere it appears.
+6. COMPLETENESS: any section with empty arrays, placeholder text, or missing required fields for its layout? In particular, case_studies slides must have their full "pairs" (or equivalent) content filled in — a title with no supporting detail is incomplete, not acceptable.
+7. DEFENSIBILITY: scan executive_summary, proposed_solution, and case_studies for any quantitative outcome (TCO %, performance %, uptime/downtime, "real-time", "zero-latency", "instant") presented as a guaranteed result rather than a target pending validation — rewrite per rule 14 (content quality rules above) wherever found. Also confirm commercials' "assumptions" makes clear the total is professional services only (not full program cost), and that licensing_estimate (if present) carries an illustrative/subject-to-validation "caption".
+8. MIGRATION SUBSTANCE: for any engagement that migrates existing data/systems (which is most of them), check that delivery_approach includes a "Migration Wave Strategy" slide when multiple workloads/systems are involved, and a "Data Quality & Reconciliation Approach" slide when real data volume is being moved — add either if genuinely missing and applicable, per the SITUATIONAL guidance in the schema above. Check risk_mitigation includes a business-continuity/cutover risk with real RPO/RTO or rollback content (not silently absent) and a "Key Technical Assumptions" slide for engagements of meaningful size. Check next_steps includes the "Roles & Responsibilities" two-column slide (customer vs. Xebia). Check case_studies pairs include "Scale" and "Timeline". Check payment_milestones trigger conditions are concrete/verifiable, not vague ("plan initialized" is not acceptable). Add whatever's missing and applicable — these are the sections that most often get silently skipped by the first pass.
+9. COMMERCIAL CLARITY & OPERATING MODEL: if support_model is present, check it includes the "Operating Model" slide (who owns what post-go-live) with real per-row ownership, not every row marked "Shared". If both commercials and licensing_estimate are present, check for the "Estimated Year-1 Investment" stats_highlight slide and verify its figures are numerically consistent with the totals shown in commercials and licensing_estimate — add or correct it if missing/inconsistent. Check corporate_overview's items connect to the customer's actual project/technologies rather than reading as generic consulting positioning with no evidence.
 
 HOW TO RESPOND — this is critical:
 Call the submit_proposal_plan tool with "ready": true. Under "sections", include ONLY the sections you are actually changing, each with its FULL corrected content using the exact field names from the schema above — do not include a section at all if you are leaving it as-is. Sections you omit are kept exactly as originally generated, so leaving an unchanged section out is correct and expected, not an oversight. Likewise, only include "title", "customer", "industry", "objective", "storyline", or "image_placements" if you are changing that specific field; omit anything you're not touching.

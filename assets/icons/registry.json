@@ -1,6 +1,6 @@
 {
   "version": "1.0.0",
-  "description": "Xebia Proposal Studio — Technology Icon Registry",
+  "description": "Xebia Proposal Studio \u2014 Technology Icon Registry",
   "last_updated": "2026-08-20",
   "total_icons": 1318,
   "icons": [
@@ -27681,9 +27681,10 @@
       "brand_color": "#F80000",
       "file_path": "databases/relational/oracle_db.svg",
       "svg_path": "databases/relational/oracle_db.svg",
-      "official_source": "https://cdn.simpleicons.org/oracle",
-      "official_asset": false,
-      "last_verified": "2026-08-20"
+      "official_source": "https://raw.githubusercontent.com/awslabs/aws-icons-for-plantuml/main/dist/Database/OracleDatabaseatAWS.png",
+      "official_asset": true,
+      "last_verified": "2026-08-20",
+      "png_path": "databases/relational/oracle_db.png"
     },
     {
       "id": "postgresql",
@@ -27702,12 +27703,11 @@
       ],
       "abbreviation": "POST",
       "brand_color": "#4169E1",
-      "file_path": "databases/relational/postgresql.png",
+      "file_path": "databases/relational/postgresql.svg",
       "svg_path": "databases/relational/postgresql.svg",
       "official_source": "https://cdn.simpleicons.org/postgresql",
       "official_asset": false,
-      "last_verified": "2026-08-20",
-      "png_path": "databases/relational/postgresql.png"
+      "last_verified": "2026-08-20"
     },
     {
       "id": "mysql",
@@ -27726,12 +27726,11 @@
       ],
       "abbreviation": "MYSQ",
       "brand_color": "#4479A1",
-      "file_path": "databases/relational/mysql.png",
+      "file_path": "databases/relational/mysql.svg",
       "svg_path": "databases/relational/mysql.svg",
       "official_source": "https://cdn.simpleicons.org/mysql",
       "official_asset": false,
-      "last_verified": "2026-08-20",
-      "png_path": "databases/relational/mysql.png"
+      "last_verified": "2026-08-20"
     },
     {
       "id": "mariadb",
@@ -27750,12 +27749,11 @@
       ],
       "abbreviation": "MARI",
       "brand_color": "#003545",
-      "file_path": "databases/relational/mariadb.png",
+      "file_path": "databases/relational/mariadb.svg",
       "svg_path": "databases/relational/mariadb.svg",
       "official_source": "https://cdn.simpleicons.org/mariadb",
       "official_asset": false,
-      "last_verified": "2026-08-20",
-      "png_path": "databases/relational/mariadb.png"
+      "last_verified": "2026-08-20"
     },
     {
       "id": "sqlite",
@@ -27774,12 +27772,11 @@
       ],
       "abbreviation": "SQLI",
       "brand_color": "#003B57",
-      "file_path": "databases/relational/sqlite.png",
+      "file_path": "databases/relational/sqlite.svg",
       "svg_path": "databases/relational/sqlite.svg",
       "official_source": "https://cdn.simpleicons.org/sqlite",
       "official_asset": false,
-      "last_verified": "2026-08-20",
-      "png_path": "databases/relational/sqlite.png"
+      "last_verified": "2026-08-20"
     },
     {
       "id": "cockroachdb",
@@ -27798,12 +27795,11 @@
       ],
       "abbreviation": "COCK",
       "brand_color": "#6933FF",
-      "file_path": "databases/relational/cockroachdb.png",
+      "file_path": "databases/relational/cockroachdb.svg",
       "svg_path": "databases/relational/cockroachdb.svg",
       "official_source": "https://cdn.simpleicons.org/cockroachlabs",
       "official_asset": false,
-      "last_verified": "2026-08-20",
-      "png_path": "databases/relational/cockroachdb.png"
+      "last_verified": "2026-08-20"
     },
     {
       "id": "sql_server",
@@ -27824,9 +27820,10 @@
       "brand_color": "#CC2927",
       "file_path": "databases/relational/sql_server.svg",
       "svg_path": "databases/relational/sql_server.svg",
-      "official_source": "https://cdn.simpleicons.org/microsoftsqlserver",
-      "official_asset": false,
-      "last_verified": "2026-08-20"
+      "official_source": "https://raw.githubusercontent.com/nicolaparo/azure-icons/main/256/icon-sql-server.png",
+      "official_asset": true,
+      "last_verified": "2026-08-20",
+      "png_path": "databases/relational/sql_server.png"
     },
     {
       "id": "mongodb",
@@ -27845,12 +27842,11 @@
       ],
       "abbreviation": "MONG",
       "brand_color": "#47A248",
-      "file_path": "databases/nosql/mongodb.png",
+      "file_path": "databases/nosql/mongodb.svg",
       "svg_path": "databases/nosql/mongodb.svg",
       "official_source": "https://cdn.simpleicons.org/mongodb",
       "official_asset": false,
-      "last_verified": "2026-08-20",
-      "png_path": "databases/nosql/mongodb.png"
+      "last_verified": "2026-08-20"
     },
     {
       "id": "cassandra",
@@ -27869,12 +27865,11 @@
       ],
       "abbreviation": "CASS",
       "brand_color": "#1287B1",
-      "file_path": "databases/nosql/cassandra.png",
+      "file_path": "databases/nosql/cassandra.svg",
       "svg_path": "databases/nosql/cassandra.svg",
       "official_source": "https://cdn.simpleicons.org/apachecassandra",
       "official_asset": false,
-      "last_verified": "2026-08-20",
-      "png_path": "databases/nosql/cassandra.png"
+      "last_verified": "2026-08-20"
     },
     {
       "id": "couchbase",
@@ -27893,12 +27888,11 @@
       ],
       "abbreviation": "COUC",
       "brand_color": "#EA2328",
-      "file_path": "databases/nosql/couchbase.png",
+      "file_path": "databases/nosql/couchbase.svg",
       "svg_path": "databases/nosql/couchbase.svg",
       "official_source": "https://cdn.simpleicons.org/couchbase",
       "official_asset": false,
-      "last_verified": "2026-08-20",
-      "png_path": "databases/nosql/couchbase.png"
+      "last_verified": "2026-08-20"
     },
     {
       "id": "redis",
@@ -27917,12 +27911,11 @@
       ],
       "abbreviation": "REDI",
       "brand_color": "#FF4438",
-      "file_path": "databases/nosql/redis.png",
+      "file_path": "databases/nosql/redis.svg",
       "svg_path": "databases/nosql/redis.svg",
       "official_source": "https://cdn.simpleicons.org/redis",
       "official_asset": false,
-      "last_verified": "2026-08-20",
-      "png_path": "databases/nosql/redis.png"
+      "last_verified": "2026-08-20"
     },
     {
       "id": "neo4j",
@@ -27941,12 +27934,11 @@
       ],
       "abbreviation": "NEO4",
       "brand_color": "#4581C3",
-      "file_path": "databases/nosql/neo4j.png",
+      "file_path": "databases/nosql/neo4j.svg",
       "svg_path": "databases/nosql/neo4j.svg",
       "official_source": "https://cdn.simpleicons.org/neo4j",
       "official_asset": false,
-      "last_verified": "2026-08-20",
-      "png_path": "databases/nosql/neo4j.png"
+      "last_verified": "2026-08-20"
     },
     {
       "id": "elasticsearch",
@@ -27965,12 +27957,11 @@
       ],
       "abbreviation": "ELAS",
       "brand_color": "#005571",
-      "file_path": "databases/nosql/elasticsearch.png",
+      "file_path": "databases/nosql/elasticsearch.svg",
       "svg_path": "databases/nosql/elasticsearch.svg",
       "official_source": "https://cdn.simpleicons.org/elasticsearch",
       "official_asset": false,
-      "last_verified": "2026-08-20",
-      "png_path": "databases/nosql/elasticsearch.png"
+      "last_verified": "2026-08-20"
     },
     {
       "id": "opensearch",
@@ -27989,12 +27980,11 @@
       ],
       "abbreviation": "OPEN",
       "brand_color": "#005EB8",
-      "file_path": "databases/nosql/opensearch.png",
+      "file_path": "databases/nosql/opensearch.svg",
       "svg_path": "databases/nosql/opensearch.svg",
       "official_source": "https://cdn.simpleicons.org/opensearch",
       "official_asset": false,
-      "last_verified": "2026-08-20",
-      "png_path": "databases/nosql/opensearch.png"
+      "last_verified": "2026-08-20"
     },
     {
       "id": "snowflake",
@@ -28013,12 +28003,11 @@
       ],
       "abbreviation": "SNOW",
       "brand_color": "#29B5E8",
-      "file_path": "databases/cloud/snowflake.png",
+      "file_path": "databases/cloud/snowflake.svg",
       "svg_path": "databases/cloud/snowflake.svg",
       "official_source": "https://cdn.simpleicons.org/snowflake",
       "official_asset": false,
-      "last_verified": "2026-08-20",
-      "png_path": "databases/cloud/snowflake.png"
+      "last_verified": "2026-08-20"
     },
     {
       "id": "databricks",
@@ -28037,12 +28026,11 @@
       ],
       "abbreviation": "DATA",
       "brand_color": "#FF3621",
-      "file_path": "databases/cloud/databricks.png",
+      "file_path": "databases/cloud/databricks.svg",
       "svg_path": "databases/cloud/databricks.svg",
       "official_source": "https://cdn.simpleicons.org/databricks",
       "official_asset": false,
-      "last_verified": "2026-08-20",
-      "png_path": "databases/cloud/databricks.png"
+      "last_verified": "2026-08-20"
     },
     {
       "id": "bigquery",
@@ -28061,12 +28049,11 @@
       ],
       "abbreviation": "BIGQ",
       "brand_color": "#669DF6",
-      "file_path": "databases/cloud/bigquery.png",
+      "file_path": "databases/cloud/bigquery.svg",
       "svg_path": "databases/cloud/bigquery.svg",
       "official_source": "https://cdn.simpleicons.org/googlebigquery",
       "official_asset": false,
-      "last_verified": "2026-08-20",
-      "png_path": "databases/cloud/bigquery.png"
+      "last_verified": "2026-08-20"
     },
     {
       "id": "teradata",
@@ -28085,12 +28072,11 @@
       ],
       "abbreviation": "TERA",
       "brand_color": "#F37440",
-      "file_path": "databases/warehouse/teradata.png",
+      "file_path": "databases/warehouse/teradata.svg",
       "svg_path": "databases/warehouse/teradata.svg",
       "official_source": "https://cdn.simpleicons.org/teradata",
       "official_asset": false,
-      "last_verified": "2026-08-20",
-      "png_path": "databases/warehouse/teradata.png"
+      "last_verified": "2026-08-20"
     },
     {
       "id": "airflow",
@@ -28109,12 +28095,11 @@
       ],
       "abbreviation": "AIRF",
       "brand_color": "#017CEE",
-      "file_path": "data-engineering/orchestration/airflow.png",
+      "file_path": "data-engineering/orchestration/airflow.svg",
       "svg_path": "data-engineering/orchestration/airflow.svg",
       "official_source": "https://cdn.simpleicons.org/apacheairflow",
       "official_asset": false,
-      "last_verified": "2026-08-20",
-      "png_path": "data-engineering/orchestration/airflow.png"
+      "last_verified": "2026-08-20"
     },
     {
       "id": "dagster",
@@ -28156,12 +28141,11 @@
       ],
       "abbreviation": "PREF",
       "brand_color": "#024DFD",
-      "file_path": "data-engineering/orchestration/prefect.png",
+      "file_path": "data-engineering/orchestration/prefect.svg",
       "svg_path": "data-engineering/orchestration/prefect.svg",
       "official_source": "https://cdn.simpleicons.org/prefect",
       "official_asset": false,
-      "last_verified": "2026-08-20",
-      "png_path": "data-engineering/orchestration/prefect.png"
+      "last_verified": "2026-08-20"
     },
     {
       "id": "spark",
@@ -28204,12 +28188,11 @@
       ],
       "abbreviation": "FLIN",
       "brand_color": "#E6526F",
-      "file_path": "data-engineering/processing/flink.png",
+      "file_path": "data-engineering/processing/flink.svg",
       "svg_path": "data-engineering/processing/flink.svg",
       "official_source": "https://cdn.simpleicons.org/apacheflink",
       "official_asset": false,
-      "last_verified": "2026-08-20",
-      "png_path": "data-engineering/processing/flink.png"
+      "last_verified": "2026-08-20"
     },
     {
       "id": "kafka",
@@ -28228,12 +28211,11 @@
       ],
       "abbreviation": "KAFK",
       "brand_color": "#231F20",
-      "file_path": "data-engineering/streaming/kafka.png",
+      "file_path": "data-engineering/streaming/kafka.svg",
       "svg_path": "data-engineering/streaming/kafka.svg",
       "official_source": "https://cdn.simpleicons.org/apachekafka",
       "official_asset": false,
-      "last_verified": "2026-08-20",
-      "png_path": "data-engineering/streaming/kafka.png"
+      "last_verified": "2026-08-20"
     },
     {
       "id": "confluent",
@@ -28275,12 +28257,11 @@
       ],
       "abbreviation": "RABB",
       "brand_color": "#FF6600",
-      "file_path": "data-engineering/streaming/rabbitmq.png",
+      "file_path": "data-engineering/streaming/rabbitmq.svg",
       "svg_path": "data-engineering/streaming/rabbitmq.svg",
       "official_source": "https://cdn.simpleicons.org/rabbitmq",
       "official_asset": false,
-      "last_verified": "2026-08-20",
-      "png_path": "data-engineering/streaming/rabbitmq.png"
+      "last_verified": "2026-08-20"
     },
     {
       "id": "pulsar",
@@ -28299,12 +28280,11 @@
       ],
       "abbreviation": "PULS",
       "brand_color": "#188FFF",
-      "file_path": "data-engineering/streaming/pulsar.png",
+      "file_path": "data-engineering/streaming/pulsar.svg",
       "svg_path": "data-engineering/streaming/pulsar.svg",
       "official_source": "https://cdn.simpleicons.org/apachepulsar",
       "official_asset": false,
-      "last_verified": "2026-08-20",
-      "png_path": "data-engineering/streaming/pulsar.png"
+      "last_verified": "2026-08-20"
     },
     {
       "id": "dbt",
@@ -28346,12 +28326,11 @@
       ],
       "abbreviation": "AIRB",
       "brand_color": "#615EFF",
-      "file_path": "data-engineering/integration/airbyte.png",
+      "file_path": "data-engineering/integration/airbyte.svg",
       "svg_path": "data-engineering/integration/airbyte.svg",
       "official_source": "https://cdn.simpleicons.org/airbyte",
       "official_asset": false,
-      "last_verified": "2026-08-20",
-      "png_path": "data-engineering/integration/airbyte.png"
+      "last_verified": "2026-08-20"
     },
     {
       "id": "informatica",
@@ -28393,12 +28372,11 @@
       ],
       "abbreviation": "TALE",
       "brand_color": "#FF6D70",
-      "file_path": "data-engineering/integration/talend.png",
+      "file_path": "data-engineering/integration/talend.svg",
       "svg_path": "data-engineering/integration/talend.svg",
       "official_source": "https://cdn.simpleicons.org/talend",
       "official_asset": false,
-      "last_verified": "2026-08-20",
-      "png_path": "data-engineering/integration/talend.png"
+      "last_verified": "2026-08-20"
     },
     {
       "id": "fivetran",
@@ -28463,12 +28441,11 @@
       ],
       "abbreviation": "FLYW",
       "brand_color": "#CC0200",
-      "file_path": "data-engineering/migration/flyway.png",
+      "file_path": "data-engineering/migration/flyway.svg",
       "svg_path": "data-engineering/migration/flyway.svg",
       "official_source": "https://cdn.simpleicons.org/flyway",
       "official_asset": false,
-      "last_verified": "2026-08-20",
-      "png_path": "data-engineering/migration/flyway.png"
+      "last_verified": "2026-08-20"
     },
     {
       "id": "liquibase",
@@ -28487,12 +28464,11 @@
       ],
       "abbreviation": "LIQU",
       "brand_color": "#2962FF",
-      "file_path": "data-engineering/migration/liquibase.png",
+      "file_path": "data-engineering/migration/liquibase.svg",
       "svg_path": "data-engineering/migration/liquibase.svg",
       "official_source": "https://cdn.simpleicons.org/liquibase",
       "official_asset": false,
-      "last_verified": "2026-08-20",
-      "png_path": "data-engineering/migration/liquibase.png"
+      "last_verified": "2026-08-20"
     },
     {
       "id": "github",
@@ -28511,12 +28487,11 @@
       ],
       "abbreviation": "GITH",
       "brand_color": "#181717",
-      "file_path": "devops/version-control/github.png",
+      "file_path": "devops/version-control/github.svg",
       "svg_path": "devops/version-control/github.svg",
       "official_source": "https://cdn.simpleicons.org/github",
       "official_asset": false,
-      "last_verified": "2026-08-20",
-      "png_path": "devops/version-control/github.png"
+      "last_verified": "2026-08-20"
     },
     {
       "id": "gitlab",
@@ -28535,12 +28510,11 @@
       ],
       "abbreviation": "GITL",
       "brand_color": "#FC6D26",
-      "file_path": "devops/version-control/gitlab.png",
+      "file_path": "devops/version-control/gitlab.svg",
       "svg_path": "devops/version-control/gitlab.svg",
       "official_source": "https://cdn.simpleicons.org/gitlab",
       "official_asset": false,
-      "last_verified": "2026-08-20",
-      "png_path": "devops/version-control/gitlab.png"
+      "last_verified": "2026-08-20"
     },
     {
       "id": "bitbucket",
@@ -28559,12 +28533,11 @@
       ],
       "abbreviation": "BITB",
       "brand_color": "#0052CC",
-      "file_path": "devops/version-control/bitbucket.png",
+      "file_path": "devops/version-control/bitbucket.svg",
       "svg_path": "devops/version-control/bitbucket.svg",
       "official_source": "https://cdn.simpleicons.org/bitbucket",
       "official_asset": false,
-      "last_verified": "2026-08-20",
-      "png_path": "devops/version-control/bitbucket.png"
+      "last_verified": "2026-08-20"
     },
     {
       "id": "git",
@@ -28583,12 +28556,11 @@
       ],
       "abbreviation": "GIT",
       "brand_color": "#F05032",
-      "file_path": "devops/version-control/git.png",
+      "file_path": "devops/version-control/git.svg",
       "svg_path": "devops/version-control/git.svg",
       "official_source": "https://cdn.simpleicons.org/git",
       "official_asset": false,
-      "last_verified": "2026-08-20",
-      "png_path": "devops/version-control/git.png"
+      "last_verified": "2026-08-20"
     },
     {
       "id": "jenkins",
@@ -28607,12 +28579,11 @@
       ],
       "abbreviation": "JENK",
       "brand_color": "#D24939",
-      "file_path": "devops/ci-cd/jenkins.png",
+      "file_path": "devops/ci-cd/jenkins.svg",
       "svg_path": "devops/ci-cd/jenkins.svg",
       "official_source": "https://cdn.simpleicons.org/jenkins",
       "official_asset": false,
-      "last_verified": "2026-08-20",
-      "png_path": "devops/ci-cd/jenkins.png"
+      "last_verified": "2026-08-20"
     },
     {
       "id": "circleci",
@@ -28631,12 +28602,11 @@
       ],
       "abbreviation": "CIRC",
       "brand_color": "#343434",
-      "file_path": "devops/ci-cd/circleci.png",
+      "file_path": "devops/ci-cd/circleci.svg",
       "svg_path": "devops/ci-cd/circleci.svg",
       "official_source": "https://cdn.simpleicons.org/circleci",
       "official_asset": false,
-      "last_verified": "2026-08-20",
-      "png_path": "devops/ci-cd/circleci.png"
+      "last_verified": "2026-08-20"
     },
     {
       "id": "github_actions",
@@ -28655,12 +28625,11 @@
       ],
       "abbreviation": "GITH",
       "brand_color": "#2088FF",
-      "file_path": "devops/ci-cd/github_actions.png",
+      "file_path": "devops/ci-cd/github_actions.svg",
       "svg_path": "devops/ci-cd/github_actions.svg",
       "official_source": "https://cdn.simpleicons.org/githubactions",
       "official_asset": false,
-      "last_verified": "2026-08-20",
-      "png_path": "devops/ci-cd/github_actions.png"
+      "last_verified": "2026-08-20"
     },
     {
       "id": "az_pipelines_si",
@@ -28702,12 +28671,11 @@
       ],
       "abbreviation": "ARGO",
       "brand_color": "#EF7B4D",
-      "file_path": "devops/ci-cd/argocd.png",
+      "file_path": "devops/ci-cd/argocd.svg",
       "svg_path": "devops/ci-cd/argocd.svg",
       "official_source": "https://cdn.simpleicons.org/argo",
       "official_asset": false,
-      "last_verified": "2026-08-20",
-      "png_path": "devops/ci-cd/argocd.png"
+      "last_verified": "2026-08-20"
     },
     {
       "id": "docker",
@@ -28726,12 +28694,11 @@
       ],
       "abbreviation": "DOCK",
       "brand_color": "#2496ED",
-      "file_path": "devops/containers/docker.png",
+      "file_path": "devops/containers/docker.svg",
       "svg_path": "devops/containers/docker.svg",
       "official_source": "https://cdn.simpleicons.org/docker",
       "official_asset": false,
-      "last_verified": "2026-08-20",
-      "png_path": "devops/containers/docker.png"
+      "last_verified": "2026-08-20"
     },
     {
       "id": "kubernetes",
@@ -28750,12 +28717,11 @@
       ],
       "abbreviation": "KUBE",
       "brand_color": "#326CE5",
-      "file_path": "devops/containers/kubernetes.png",
+      "file_path": "devops/containers/kubernetes.svg",
       "svg_path": "devops/containers/kubernetes.svg",
       "official_source": "https://cdn.simpleicons.org/kubernetes",
       "official_asset": false,
-      "last_verified": "2026-08-20",
-      "png_path": "devops/containers/kubernetes.png"
+      "last_verified": "2026-08-20"
     },
     {
       "id": "helm",
@@ -28774,12 +28740,11 @@
       ],
       "abbreviation": "HELM",
       "brand_color": "#0F1689",
-      "file_path": "devops/containers/helm.png",
+      "file_path": "devops/containers/helm.svg",
       "svg_path": "devops/containers/helm.svg",
       "official_source": "https://cdn.simpleicons.org/helm",
       "official_asset": false,
-      "last_verified": "2026-08-20",
-      "png_path": "devops/containers/helm.png"
+      "last_verified": "2026-08-20"
     },
     {
       "id": "containerd",
@@ -28798,12 +28763,11 @@
       ],
       "abbreviation": "CONT",
       "brand_color": "#575757",
-      "file_path": "devops/containers/containerd.png",
+      "file_path": "devops/containers/containerd.svg",
       "svg_path": "devops/containers/containerd.svg",
       "official_source": "https://cdn.simpleicons.org/containerd",
       "official_asset": false,
-      "last_verified": "2026-08-20",
-      "png_path": "devops/containers/containerd.png"
+      "last_verified": "2026-08-20"
     },
     {
       "id": "terraform",
@@ -28822,12 +28786,11 @@
       ],
       "abbreviation": "TERR",
       "brand_color": "#844FBA",
-      "file_path": "devops/iac/terraform.png",
+      "file_path": "devops/iac/terraform.svg",
       "svg_path": "devops/iac/terraform.svg",
       "official_source": "https://cdn.simpleicons.org/terraform",
       "official_asset": false,
-      "last_verified": "2026-08-20",
-      "png_path": "devops/iac/terraform.png"
+      "last_verified": "2026-08-20"
     },
     {
       "id": "pulumi",
@@ -28846,12 +28809,11 @@
       ],
       "abbreviation": "PULU",
       "brand_color": "#8A3391",
-      "file_path": "devops/iac/pulumi.png",
+      "file_path": "devops/iac/pulumi.svg",
       "svg_path": "devops/iac/pulumi.svg",
       "official_source": "https://cdn.simpleicons.org/pulumi",
       "official_asset": false,
-      "last_verified": "2026-08-20",
-      "png_path": "devops/iac/pulumi.png"
+      "last_verified": "2026-08-20"
     },
     {
       "id": "ansible",
@@ -28870,12 +28832,11 @@
       ],
       "abbreviation": "ANSI",
       "brand_color": "#EE0000",
-      "file_path": "devops/iac/ansible.png",
+      "file_path": "devops/iac/ansible.svg",
       "svg_path": "devops/iac/ansible.svg",
       "official_source": "https://cdn.simpleicons.org/ansible",
       "official_asset": false,
-      "last_verified": "2026-08-20",
-      "png_path": "devops/iac/ansible.png"
+      "last_verified": "2026-08-20"
     },
     {
       "id": "sonarqube",
@@ -28917,12 +28878,11 @@
       ],
       "abbreviation": "HASH",
       "brand_color": "#FFEC6E",
-      "file_path": "security/secrets/hashicorp_vault.png",
+      "file_path": "security/secrets/hashicorp_vault.svg",
       "svg_path": "security/secrets/hashicorp_vault.svg",
       "official_source": "https://cdn.simpleicons.org/vault",
       "official_asset": false,
-      "last_verified": "2026-08-20",
-      "png_path": "security/secrets/hashicorp_vault.png"
+      "last_verified": "2026-08-20"
     },
     {
       "id": "tensorflow",
@@ -28941,12 +28901,11 @@
       ],
       "abbreviation": "TENS",
       "brand_color": "#FF6F00",
-      "file_path": "ai-ml/tensorflow.png",
+      "file_path": "ai-ml/tensorflow.svg",
       "svg_path": "ai-ml/tensorflow.svg",
       "official_source": "https://cdn.simpleicons.org/tensorflow",
       "official_asset": false,
-      "last_verified": "2026-08-20",
-      "png_path": "ai-ml/tensorflow.png"
+      "last_verified": "2026-08-20"
     },
     {
       "id": "pytorch",
@@ -28965,12 +28924,11 @@
       ],
       "abbreviation": "PYTO",
       "brand_color": "#EE4C2C",
-      "file_path": "ai-ml/pytorch.png",
+      "file_path": "ai-ml/pytorch.svg",
       "svg_path": "ai-ml/pytorch.svg",
       "official_source": "https://cdn.simpleicons.org/pytorch",
       "official_asset": false,
-      "last_verified": "2026-08-20",
-      "png_path": "ai-ml/pytorch.png"
+      "last_verified": "2026-08-20"
     },
     {
       "id": "huggingface",
@@ -28989,12 +28947,11 @@
       ],
       "abbreviation": "HUGG",
       "brand_color": "#FFD21E",
-      "file_path": "ai-ml/huggingface.png",
+      "file_path": "ai-ml/huggingface.svg",
       "svg_path": "ai-ml/huggingface.svg",
       "official_source": "https://cdn.simpleicons.org/huggingface",
       "official_asset": false,
-      "last_verified": "2026-08-20",
-      "png_path": "ai-ml/huggingface.png"
+      "last_verified": "2026-08-20"
     },
     {
       "id": "openai",
@@ -29036,12 +28993,11 @@
       ],
       "abbreviation": "MLFL",
       "brand_color": "#0194E2",
-      "file_path": "ai-ml/mlflow.png",
+      "file_path": "ai-ml/mlflow.svg",
       "svg_path": "ai-ml/mlflow.svg",
       "official_source": "https://cdn.simpleicons.org/mlflow",
       "official_asset": false,
-      "last_verified": "2026-08-20",
-      "png_path": "ai-ml/mlflow.png"
+      "last_verified": "2026-08-20"
     },
     {
       "id": "wandb",
@@ -29060,12 +29016,11 @@
       ],
       "abbreviation": "WAND",
       "brand_color": "#FFBE00",
-      "file_path": "ai-ml/wandb.png",
+      "file_path": "ai-ml/wandb.svg",
       "svg_path": "ai-ml/wandb.svg",
       "official_source": "https://cdn.simpleicons.org/weightsandbiases",
       "official_asset": false,
-      "last_verified": "2026-08-20",
-      "png_path": "ai-ml/wandb.png"
+      "last_verified": "2026-08-20"
     },
     {
       "id": "jupyter",
@@ -29084,12 +29039,11 @@
       ],
       "abbreviation": "JUPY",
       "brand_color": "#F37626",
-      "file_path": "ai-ml/jupyter.png",
+      "file_path": "ai-ml/jupyter.svg",
       "svg_path": "ai-ml/jupyter.svg",
       "official_source": "https://cdn.simpleicons.org/jupyter",
       "official_asset": false,
-      "last_verified": "2026-08-20",
-      "png_path": "ai-ml/jupyter.png"
+      "last_verified": "2026-08-20"
     },
     {
       "id": "scikit_learn",
@@ -29108,12 +29062,11 @@
       ],
       "abbreviation": "SCIK",
       "brand_color": "#F7931E",
-      "file_path": "ai-ml/scikit_learn.png",
+      "file_path": "ai-ml/scikit_learn.svg",
       "svg_path": "ai-ml/scikit_learn.svg",
       "official_source": "https://cdn.simpleicons.org/scikitlearn",
       "official_asset": false,
-      "last_verified": "2026-08-20",
-      "png_path": "ai-ml/scikit_learn.png"
+      "last_verified": "2026-08-20"
     },
     {
       "id": "numpy",
@@ -29132,12 +29085,11 @@
       ],
       "abbreviation": "NUMP",
       "brand_color": "#013243",
-      "file_path": "ai-ml/numpy.png",
+      "file_path": "ai-ml/numpy.svg",
       "svg_path": "ai-ml/numpy.svg",
       "official_source": "https://cdn.simpleicons.org/numpy",
       "official_asset": false,
-      "last_verified": "2026-08-20",
-      "png_path": "ai-ml/numpy.png"
+      "last_verified": "2026-08-20"
     },
     {
       "id": "pandas",
@@ -29156,12 +29108,11 @@
       ],
       "abbreviation": "PAND",
       "brand_color": "#150458",
-      "file_path": "ai-ml/pandas.png",
+      "file_path": "ai-ml/pandas.svg",
       "svg_path": "ai-ml/pandas.svg",
       "official_source": "https://cdn.simpleicons.org/pandas",
       "official_asset": false,
-      "last_verified": "2026-08-20",
-      "png_path": "ai-ml/pandas.png"
+      "last_verified": "2026-08-20"
     },
     {
       "id": "keras",
@@ -29180,12 +29131,11 @@
       ],
       "abbreviation": "KERA",
       "brand_color": "#D00000",
-      "file_path": "ai-ml/keras.png",
+      "file_path": "ai-ml/keras.svg",
       "svg_path": "ai-ml/keras.svg",
       "official_source": "https://cdn.simpleicons.org/keras",
       "official_asset": false,
-      "last_verified": "2026-08-20",
-      "png_path": "ai-ml/keras.png"
+      "last_verified": "2026-08-20"
     },
     {
       "id": "opencv",
@@ -29204,12 +29154,11 @@
       ],
       "abbreviation": "OPEN",
       "brand_color": "#5C3EE8",
-      "file_path": "ai-ml/opencv.png",
+      "file_path": "ai-ml/opencv.svg",
       "svg_path": "ai-ml/opencv.svg",
       "official_source": "https://cdn.simpleicons.org/opencv",
       "official_asset": false,
-      "last_verified": "2026-08-20",
-      "png_path": "ai-ml/opencv.png"
+      "last_verified": "2026-08-20"
     },
     {
       "id": "prometheus",
@@ -29228,12 +29177,11 @@
       ],
       "abbreviation": "PROM",
       "brand_color": "#E6522C",
-      "file_path": "monitoring/prometheus.png",
+      "file_path": "monitoring/prometheus.svg",
       "svg_path": "monitoring/prometheus.svg",
       "official_source": "https://cdn.simpleicons.org/prometheus",
       "official_asset": false,
-      "last_verified": "2026-08-20",
-      "png_path": "monitoring/prometheus.png"
+      "last_verified": "2026-08-20"
     },
     {
       "id": "grafana",
@@ -29252,12 +29200,11 @@
       ],
       "abbreviation": "GRAF",
       "brand_color": "#F46800",
-      "file_path": "monitoring/grafana.png",
+      "file_path": "monitoring/grafana.svg",
       "svg_path": "monitoring/grafana.svg",
       "official_source": "https://cdn.simpleicons.org/grafana",
       "official_asset": false,
-      "last_verified": "2026-08-20",
-      "png_path": "monitoring/grafana.png"
+      "last_verified": "2026-08-20"
     },
     {
       "id": "datadog",
@@ -29276,12 +29223,11 @@
       ],
       "abbreviation": "DATA",
       "brand_color": "#632CA6",
-      "file_path": "monitoring/datadog.png",
+      "file_path": "monitoring/datadog.svg",
       "svg_path": "monitoring/datadog.svg",
       "official_source": "https://cdn.simpleicons.org/datadog",
       "official_asset": false,
-      "last_verified": "2026-08-20",
-      "png_path": "monitoring/datadog.png"
+      "last_verified": "2026-08-20"
     },
     {
       "id": "newrelic",
@@ -29300,12 +29246,11 @@
       ],
       "abbreviation": "NEWR",
       "brand_color": "#1CE783",
-      "file_path": "monitoring/newrelic.png",
+      "file_path": "monitoring/newrelic.svg",
       "svg_path": "monitoring/newrelic.svg",
       "official_source": "https://cdn.simpleicons.org/newrelic",
       "official_asset": false,
-      "last_verified": "2026-08-20",
-      "png_path": "monitoring/newrelic.png"
+      "last_verified": "2026-08-20"
     },
     {
       "id": "splunk",
@@ -29324,12 +29269,11 @@
       ],
       "abbreviation": "SPLU",
       "brand_color": "#000000",
-      "file_path": "monitoring/splunk.png",
+      "file_path": "monitoring/splunk.svg",
       "svg_path": "monitoring/splunk.svg",
       "official_source": "https://cdn.simpleicons.org/splunk",
       "official_asset": false,
-      "last_verified": "2026-08-20",
-      "png_path": "monitoring/splunk.png"
+      "last_verified": "2026-08-20"
     },
     {
       "id": "dynatrace",
@@ -29348,12 +29292,11 @@
       ],
       "abbreviation": "DYNA",
       "brand_color": "#1496FF",
-      "file_path": "monitoring/dynatrace.png",
+      "file_path": "monitoring/dynatrace.svg",
       "svg_path": "monitoring/dynatrace.svg",
       "official_source": "https://cdn.simpleicons.org/dynatrace",
       "official_asset": false,
-      "last_verified": "2026-08-20",
-      "png_path": "monitoring/dynatrace.png"
+      "last_verified": "2026-08-20"
     },
     {
       "id": "elastic",
@@ -29372,12 +29315,11 @@
       ],
       "abbreviation": "ELAS",
       "brand_color": "#005571",
-      "file_path": "monitoring/elastic.png",
+      "file_path": "monitoring/elastic.svg",
       "svg_path": "monitoring/elastic.svg",
       "official_source": "https://cdn.simpleicons.org/elastic",
       "official_asset": false,
-      "last_verified": "2026-08-20",
-      "png_path": "monitoring/elastic.png"
+      "last_verified": "2026-08-20"
     },
     {
       "id": "okta",
@@ -29396,12 +29338,11 @@
       ],
       "abbreviation": "OKTA",
       "brand_color": "#007DC1",
-      "file_path": "security/identity/okta.png",
+      "file_path": "security/identity/okta.svg",
       "svg_path": "security/identity/okta.svg",
       "official_source": "https://cdn.simpleicons.org/okta",
       "official_asset": false,
-      "last_verified": "2026-08-20",
-      "png_path": "security/identity/okta.png"
+      "last_verified": "2026-08-20"
     },
     {
       "id": "auth0",
@@ -29420,12 +29361,11 @@
       ],
       "abbreviation": "AUTH",
       "brand_color": "#EB5424",
-      "file_path": "security/identity/auth0.png",
+      "file_path": "security/identity/auth0.svg",
       "svg_path": "security/identity/auth0.svg",
       "official_source": "https://cdn.simpleicons.org/auth0",
       "official_asset": false,
-      "last_verified": "2026-08-20",
-      "png_path": "security/identity/auth0.png"
+      "last_verified": "2026-08-20"
     },
     {
       "id": "snyk",
@@ -29444,12 +29384,11 @@
       ],
       "abbreviation": "SNYK",
       "brand_color": "#4C4A73",
-      "file_path": "security/scanning/snyk.png",
+      "file_path": "security/scanning/snyk.svg",
       "svg_path": "security/scanning/snyk.svg",
       "official_source": "https://cdn.simpleicons.org/snyk",
       "official_asset": false,
-      "last_verified": "2026-08-20",
-      "png_path": "security/scanning/snyk.png"
+      "last_verified": "2026-08-20"
     },
     {
       "id": "crowdstrike",
@@ -29491,12 +29430,11 @@
       ],
       "abbreviation": "GRAP",
       "brand_color": "#E10098",
-      "file_path": "integration/api/graphql.png",
+      "file_path": "integration/api/graphql.svg",
       "svg_path": "integration/api/graphql.svg",
       "official_source": "https://cdn.simpleicons.org/graphql",
       "official_asset": false,
-      "last_verified": "2026-08-20",
-      "png_path": "integration/api/graphql.png"
+      "last_verified": "2026-08-20"
     },
     {
       "id": "kong",
@@ -29515,12 +29453,11 @@
       ],
       "abbreviation": "KONG",
       "brand_color": "#003459",
-      "file_path": "integration/api/kong.png",
+      "file_path": "integration/api/kong.svg",
       "svg_path": "integration/api/kong.svg",
       "official_source": "https://cdn.simpleicons.org/kong",
       "official_asset": false,
-      "last_verified": "2026-08-20",
-      "png_path": "integration/api/kong.png"
+      "last_verified": "2026-08-20"
     },
     {
       "id": "apigee",
@@ -29562,12 +29499,11 @@
       ],
       "abbreviation": "PYTH",
       "brand_color": "#3776AB",
-      "file_path": "general/python_lang.png",
+      "file_path": "general/python_lang.svg",
       "svg_path": "general/python_lang.svg",
       "official_source": "https://cdn.simpleicons.org/python",
       "official_asset": false,
-      "last_verified": "2026-08-20",
-      "png_path": "general/python_lang.png"
+      "last_verified": "2026-08-20"
     },
     {
       "id": "java",
@@ -29586,12 +29522,11 @@
       ],
       "abbreviation": "JAVA",
       "brand_color": "#ED8B00",
-      "file_path": "general/java.png",
+      "file_path": "general/java.svg",
       "svg_path": "general/java.svg",
       "official_source": "https://cdn.simpleicons.org/openjdk",
       "official_asset": false,
-      "last_verified": "2026-08-20",
-      "png_path": "general/java.png"
+      "last_verified": "2026-08-20"
     },
     {
       "id": "go_lang",
@@ -29610,12 +29545,11 @@
       ],
       "abbreviation": "GO_L",
       "brand_color": "#00ADD8",
-      "file_path": "general/go_lang.png",
+      "file_path": "general/go_lang.svg",
       "svg_path": "general/go_lang.svg",
       "official_source": "https://cdn.simpleicons.org/go",
       "official_asset": false,
-      "last_verified": "2026-08-20",
-      "png_path": "general/go_lang.png"
+      "last_verified": "2026-08-20"
     },
     {
       "id": "nodejs",
@@ -29634,12 +29568,11 @@
       ],
       "abbreviation": "NODE",
       "brand_color": "#5FA04E",
-      "file_path": "general/nodejs.png",
+      "file_path": "general/nodejs.svg",
       "svg_path": "general/nodejs.svg",
       "official_source": "https://cdn.simpleicons.org/nodedotjs",
       "official_asset": false,
-      "last_verified": "2026-08-20",
-      "png_path": "general/nodejs.png"
+      "last_verified": "2026-08-20"
     },
     {
       "id": "dotnet",
@@ -29658,12 +29591,11 @@
       ],
       "abbreviation": "DOTN",
       "brand_color": "#512BD4",
-      "file_path": "general/dotnet.png",
+      "file_path": "general/dotnet.svg",
       "svg_path": "general/dotnet.svg",
       "official_source": "https://cdn.simpleicons.org/dotnet",
       "official_asset": false,
-      "last_verified": "2026-08-20",
-      "png_path": "general/dotnet.png"
+      "last_verified": "2026-08-20"
     },
     {
       "id": "rust_lang",
@@ -29682,12 +29614,11 @@
       ],
       "abbreviation": "RUST",
       "brand_color": "#000000",
-      "file_path": "general/rust_lang.png",
+      "file_path": "general/rust_lang.svg",
       "svg_path": "general/rust_lang.svg",
       "official_source": "https://cdn.simpleicons.org/rust",
       "official_asset": false,
-      "last_verified": "2026-08-20",
-      "png_path": "general/rust_lang.png"
+      "last_verified": "2026-08-20"
     },
     {
       "id": "typescript",
@@ -29706,12 +29637,11 @@
       ],
       "abbreviation": "TYPE",
       "brand_color": "#3178C6",
-      "file_path": "general/typescript.png",
+      "file_path": "general/typescript.svg",
       "svg_path": "general/typescript.svg",
       "official_source": "https://cdn.simpleicons.org/typescript",
       "official_asset": false,
-      "last_verified": "2026-08-20",
-      "png_path": "general/typescript.png"
+      "last_verified": "2026-08-20"
     },
     {
       "id": "tableau",
@@ -29753,12 +29683,11 @@
       ],
       "abbreviation": "LOOK",
       "brand_color": "#4285F4",
-      "file_path": "analytics/looker.png",
+      "file_path": "analytics/looker.svg",
       "svg_path": "analytics/looker.svg",
       "official_source": "https://cdn.simpleicons.org/looker",
       "official_asset": false,
-      "last_verified": "2026-08-20",
-      "png_path": "analytics/looker.png"
+      "last_verified": "2026-08-20"
     },
     {
       "id": "power_bi_si",
@@ -29800,12 +29729,11 @@
       ],
       "abbreviation": "META",
       "brand_color": "#509EE3",
-      "file_path": "analytics/metabase.png",
+      "file_path": "analytics/metabase.svg",
       "svg_path": "analytics/metabase.svg",
       "official_source": "https://cdn.simpleicons.org/metabase",
       "official_asset": false,
-      "last_verified": "2026-08-20",
-      "png_path": "analytics/metabase.png"
+      "last_verified": "2026-08-20"
     },
     {
       "id": "apache",
@@ -29824,12 +29752,11 @@
       ],
       "abbreviation": "APAC",
       "brand_color": "#D22128",
-      "file_path": "general/apache.png",
+      "file_path": "general/apache.svg",
       "svg_path": "general/apache.svg",
       "official_source": "https://cdn.simpleicons.org/apache",
       "official_asset": false,
-      "last_verified": "2026-08-20",
-      "png_path": "general/apache.png"
+      "last_verified": "2026-08-20"
     },
     {
       "id": "gcp",
@@ -29848,12 +29775,11 @@
       ],
       "abbreviation": "GCP",
       "brand_color": "#4285F4",
-      "file_path": "general/gcp.png",
+      "file_path": "general/gcp.svg",
       "svg_path": "general/gcp.svg",
       "official_source": "https://cdn.simpleicons.org/googlecloud",
       "official_asset": false,
-      "last_verified": "2026-08-20",
-      "png_path": "general/gcp.png"
+      "last_verified": "2026-08-20"
     },
     {
       "id": "fabric",

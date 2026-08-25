@@ -54,6 +54,9 @@ templates/from_documents/
 # Image cache (downloaded stock photos)
 data/image_cache/
 
+# User-uploaded reference images (runtime session data)
+data/uploads/
+
 # Large binary assets (downloaded icons — regeneratable via scripts/build_icon_library.py)
 assets/icons/**/*.png
 assets/icons/**/*.svg

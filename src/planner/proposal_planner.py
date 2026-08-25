@@ -84,14 +84,17 @@ class ProposalSession:
             return {"ready": False, "message": error_msg}
 
         if result.get("ready"):
-            if provider == "claude":
-                try:
+            try:
+                if provider == "gemini":
+                    from llm import gemini_client
+                    reviewed = gemini_client.review_and_improve_plan(result)
+                else:
                     reviewed = anthropic_client.review_and_improve_plan(result)
-                    if not reviewed.get("image_placements") and result.get("image_placements"):
-                        reviewed["image_placements"] = result["image_placements"]
-                    result = reviewed
-                except Exception as e:
-                    print(f"[ProposalSession] Review pass failed ({e}), using unreviewed plan")
+                if not reviewed.get("image_placements") and result.get("image_placements"):
+                    reviewed["image_placements"] = result["image_placements"]
+                result = reviewed
+            except Exception as e:
+                print(f"[ProposalSession] Review pass failed ({e}), using unreviewed plan")
 
             result = _ensure_table_of_contents(result)
             self.plan = result

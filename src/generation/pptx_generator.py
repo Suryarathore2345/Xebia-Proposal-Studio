@@ -37,11 +37,18 @@ from generation.slide_builders import (
     build_global_presence_slide,
     build_xebia_capabilities_slide,
     build_migration_flow_slide,
+    build_customer_portfolio_slide,
+    has_customer_portfolio_logos,
 )
 from images.pexels_client import fetch_slide_image
 
 
-PHOTO_ELIGIBLE_LAYOUTS = {"content", "two_column", "key_value"}
+PHOTO_ELIGIBLE_LAYOUTS = {"content"}
+# "two_column" and "key_value" used to be listed here too, but
+# build_content_photo_slide only understands flat body_text/bullets —
+# it silently drops "left"/"right" (two_column) and "pairs" (key_value)
+# data, rendering an empty content area with just a title whenever an
+# image_query happened to produce a hit for one of those layouts.
 
 LAYER_COLOR_MAP = {
     "blue": "blue", "teal": "teal", "purple": "purple",
@@ -58,8 +65,11 @@ def _layers_to_migration_flow(layers: list[dict]) -> dict:
         zone_color = LAYER_COLOR_MAP.get(color_name, ZONE_COLOR_CYCLE[i % len(ZONE_COLOR_CYCLE)])
 
         components = layer.get("components", [])
+        # No "label" here: MigrationFlowRenderer already shows the zone's
+        # "title" (below) as a header pill above this single group's dashed
+        # box, so repeating the same layer name as the group label would
+        # render twice, overlapping, inside one zone.
         groups = [{
-            "label": layer.get("name", f"Layer {i+1}"),
             "items": components,
             "style": "icons",
         }]
@@ -262,6 +272,11 @@ class ProposalPPTGenerator:
                 spec = self._next_spec()
                 style = self._style_for_spec(spec)
                 build_global_presence_slide(self.prs, style, self._next_slide_num())
+                if has_customer_portfolio_logos():
+                    spec = self._next_spec()
+                    style = self._style_for_spec(spec)
+                    build_customer_portfolio_slide(self.prs, style, self._next_slide_num(),
+                                                   customer_name=self.plan.get("customer"))
                 xebia_slides_added = True
 
         self.prs.save(str(output_path))
@@ -299,14 +314,7 @@ class ProposalPPTGenerator:
                         layout_name=self.template_info.get("toc_layout"))
 
     def _build_exec_summary(self, data: dict):
-        spec = self._next_spec()
-        style = self._style_for_spec(spec)
-        build_section_divider(self.prs, style, data.get("title", "Executive Summary"),
-                              self._next_slide_num(),
-                              image_path=self._fetch_image(data, "section_divider"),
-                              use_light=self._next_divider_light(),
-                              layout_name=self.template_info.get("chapter_layout"))
-
+        # Always exactly one content slide here — same reasoning as _build_team.
         spec = self._next_spec()
         style = self._style_for_spec(spec)
         build_executive_summary_slide(
@@ -321,12 +329,23 @@ class ProposalPPTGenerator:
     def _build_content_section(self, key: str, data: dict):
         title = data.get("title", key.replace("_", " ").title())
 
-        spec = self._next_spec()
-        style = self._style_for_spec(spec)
-        build_section_divider(self.prs, style, title, self._next_slide_num(),
-                              image_path=self._fetch_image(data, "section_divider"),
-                              use_light=self._next_divider_light(),
-                              layout_name=self.template_info.get("chapter_layout"))
+        # A standalone divider slide ahead of a single content slide reads
+        # as padding, not pacing — skip it for thin (1-slide) sections and
+        # keep it only where it earns its place (2+ slides, a genuine
+        # section transition). corporate_overview is the exception: its
+        # LLM-authored data is a single "About Xebia" slide, but the
+        # xebia_slides_added block below always appends 2-4 more slides to
+        # it, so it's a multi-slide section in practice even though this
+        # function only sees the first slide's data.
+        section_slides = data.get("slides", [])
+        num_content_slides = len(section_slides) if section_slides else 1
+        if num_content_slides > 1 or key == "corporate_overview":
+            spec = self._next_spec()
+            style = self._style_for_spec(spec)
+            build_section_divider(self.prs, style, title, self._next_slide_num(),
+                                  image_path=self._fetch_image(data, "section_divider"),
+                                  use_light=self._next_divider_light(),
+                                  layout_name=self.template_info.get("chapter_layout"))
 
         slides = data.get("slides", [])
         if slides:
@@ -403,12 +422,7 @@ class ProposalPPTGenerator:
 
     def _build_timeline(self, data: dict):
         title = data.get("title", "Timeline")
-        spec = self._next_spec()
-        style = self._style_for_spec(spec)
-        build_section_divider(self.prs, style, title, self._next_slide_num(),
-                              image_path=self._fetch_image(data, "timeline"),
-                              use_light=self._next_divider_light(),
-                              layout_name=self.template_info.get("chapter_layout"))
+        # Always exactly one content slide here — same reasoning as _build_team.
         spec = self._next_spec()
         style = self._style_for_spec(spec)
         build_timeline_slide(self.prs, style, title=title,
@@ -418,12 +432,8 @@ class ProposalPPTGenerator:
 
     def _build_team(self, data: dict):
         title = data.get("title", "Team Structure")
-        spec = self._next_spec()
-        style = self._style_for_spec(spec)
-        build_section_divider(self.prs, style, title, self._next_slide_num(),
-                              image_path=self._fetch_image(data, "team"),
-                              use_light=self._next_divider_light(),
-                              layout_name=self.template_info.get("chapter_layout"))
+        # Always exactly one content slide here — a dedicated divider ahead
+        # of it is padding, not pacing (see _build_content_section).
         spec = self._next_spec()
         style = self._style_for_spec(spec)
         build_team_slide(self.prs, style, title=title,
@@ -433,12 +443,7 @@ class ProposalPPTGenerator:
 
     def _build_commercials(self, data: dict):
         title = data.get("title", "Commercials")
-        spec = self._next_spec()
-        style = self._style_for_spec(spec)
-        build_section_divider(self.prs, style, title, self._next_slide_num(),
-                              image_path=self._fetch_image(data, "content"),
-                              use_light=self._next_divider_light(),
-                              layout_name=self.template_info.get("chapter_layout"))
+        # Always exactly one content slide here — same reasoning as _build_team.
         spec = self._next_spec()
         style = self._style_for_spec(spec)
         build_commercials_slide(self.prs, style, title=title,

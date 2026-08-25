@@ -355,14 +355,20 @@ class MigrationFlowRenderer:
         pill_h = 0.18
         pill_gap_x = 0.05
         pill_gap_y = 0.04
-        max_pill_w = max(0.5, (w - pill_gap_x) / 2 - pill_gap_x)
+        # Cap at the full row width, not half of it — a pill only needs to
+        # share a row with another if both actually fit; the wrap logic
+        # below already moves an oversized pill to its own row. The old
+        # half-width cap truncated any single term longer than ~8 chars
+        # (e.g. "ExpressRoute", "Deduplication") regardless of room.
+        max_pill_w = max(0.5, w - 2 * pill_gap_x)
 
         px, py = x, y
         for item in items:
             text_len = len(item)
+            pill_size = 5.5 if text_len <= 14 else max(4.5, 5.5 - 0.1 * (text_len - 14))
             pill_w = min(max_pill_w, max(0.48, text_len * 0.058 + 0.14))
 
-            if px + pill_w > x + w:
+            if px + pill_w > x + w and px > x:
                 px = x
                 py += pill_h + pill_gap_y
                 if py + pill_h > y + h:
@@ -373,7 +379,7 @@ class MigrationFlowRenderer:
                                   line_color=None)
             add_textbox(self.slide, px + 0.04, py + 0.02,
                         pill_w - 0.08, pill_h - 0.04,
-                        item, 5.5, "#FFFFFF", alignment=PP_ALIGN.CENTER,
+                        item, pill_size, "#FFFFFF", alignment=PP_ALIGN.CENTER,
                         font_name=self.body_font)
             px += pill_w + pill_gap_x
 
@@ -509,16 +515,20 @@ class MigrationFlowRenderer:
                     except Exception:
                         pass
 
-            # Label pill
+            # Label pill — width and font scale with text length so a long
+            # governance-style label ("Enterprise Governance & Cross-Cutting
+            # Controls") doesn't wrap past the fixed-height band and clip.
+            label_text = band_data.get("label", "")
+            label_w = min(3.6, max(1.6, len(label_text) * 0.052 + 0.3))
+            label_size = 6.5 if len(label_text) <= 24 else max(5, 6.5 - 0.05 * (len(label_text) - 24))
             label_x = self.content_left + (0.42 if icon_rendered else 0.04)
-            label_w = 1.6
             add_rounded_rectangle(self.slide, label_x,
                                   y + 0.04, label_w, band_h - 0.08,
                                   fill_color=color)
             add_textbox(self.slide, label_x + 0.06,
-                        y + (band_h - 0.18) / 2,
-                        label_w - 0.12, 0.18,
-                        band_data.get("label", ""), 6.5, "#FFFFFF",
+                        y + (band_h - 0.24) / 2,
+                        label_w - 0.12, 0.24,
+                        label_text, label_size, "#FFFFFF",
                         bold=True, font_name=self.font)
 
             # Items

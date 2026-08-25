@@ -18,6 +18,7 @@ from generation.design_engine.blueprints import (
 )
 from generation.design_engine.theme_generator import DesignTheme
 from generation.design_engine.variety_engine import enforce_variety
+from generation.slide_builders import has_customer_portfolio_logos
 
 
 @dataclass
@@ -61,6 +62,8 @@ def build_slide_manifest(plan: dict) -> list[dict]:
                 slides.append({"id": f"{section_key}_0", "type": layout, "title": title})
                 slides.append({"id": "xebia_capabilities", "type": "icon_grid", "title": "Why Xebia"})
                 slides.append({"id": "global_presence", "type": "content", "title": "Global Presence"})
+                if has_customer_portfolio_logos():
+                    slides.append({"id": "customer_portfolio", "type": "content", "title": "Xebia Customer Portfolio"})
             elif section_key == "executive_summary":
                 slides.append({"id": "exec_summary", "type": "content", "title": title})
             else:

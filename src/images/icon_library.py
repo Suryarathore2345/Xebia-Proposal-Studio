@@ -149,7 +149,11 @@ class IconLibrary:
         "stream analytics": "az_stream_analytics_jobs",
         "data explorer": "az_azure_data_explorer_clusters",
         "cognitive services": "az_cognitive_services",
-        "machine learning": "az_machine_learning",
+        # az_machine_learning has no downloaded file; the Studio Workspaces
+        # icon is the closest real asset actually on disk.
+        "machine learning": "az_machine_learning_studio_workspaces",
+        "azure machine learning": "az_machine_learning_studio_workspaces",
+        "azure ml": "az_machine_learning_studio_workspaces",
         "bot services": "az_bot_services",
         "search services": "az_search_services",
         "signalr": "az_signalr",
@@ -198,6 +202,29 @@ class IconLibrary:
         "reflex": "fabric_reflex",
         "real-time intel": "fabric_real_time_intelligence",
         "real time intel": "fabric_real_time_intelligence",
+        # Oracle has no dedicated icon anywhere in the registry (the
+        # oracle_db stub entry has no source configured) — the closest
+        # real Oracle-branded asset on file is AWS's "Oracle Database at
+        # AWS" icon, which is a reasonable stand-in for a generic Oracle
+        # Database source-system icon.
+        "oracle": "aws_oracle_databaseat_a_w_s",
+        "oracle database": "aws_oracle_databaseat_a_w_s",
+        "oracle db": "aws_oracle_databaseat_a_w_s",
+        "oracle exadata": "aws_oracle_databaseat_a_w_s",
+        "oracle rac": "aws_oracle_databaseat_a_w_s",
+        "gold layer": "fabric_warehouse",
+        "gold warehouse": "fabric_warehouse",
+        "bronze layer": "fabric_lakehouse",
+        "silver layer": "fabric_lakehouse",
+        "delta lake": "fabric_lakehouse",
+        "delta tables": "fabric_lakehouse",
+        # No dedicated "Self-Hosted Integration Runtime" icon exists anywhere
+        # in the registry — a network gateway icon is the closest visual
+        # stand-in for this hybrid on-prem/cloud connectivity concept.
+        "self-hosted integration runtime": "az_local_network_gateways",
+        "self hosted integration runtime": "az_local_network_gateways",
+        "azure self-hosted ir": "az_local_network_gateways",
+        "self-hosted ir": "az_local_network_gateways",
     }
 
     def _apply_short_aliases(self):
@@ -211,7 +238,24 @@ class IconLibrary:
 
     def _resolve_entry(self, name: str) -> dict | None:
         norm = _normalize(name)
-        return self._index.get(norm)
+        entry = self._index.get(norm)
+        if entry:
+            return entry
+
+        # LLM-generated labels are often compound/descriptive ("Fabric Data
+        # Factory Pipelines", "Azure Self-Hosted IR") rather than an exact
+        # registered name or alias. Fall back to substring matching against
+        # every indexed key, preferring the longest match — long enough to
+        # avoid short/generic words causing false positives, but catching
+        # a registered term embedded inside a longer descriptive phrase.
+        best_key = None
+        for key in self._index:
+            if len(key) < 5:
+                continue
+            if key in norm or norm in key:
+                if best_key is None or len(key) > len(best_key):
+                    best_key = key
+        return self._index.get(best_key) if best_key else None
 
     def get_icon(self, name: str, png_only: bool = True) -> Path | None:
         entry = self._resolve_entry(name)

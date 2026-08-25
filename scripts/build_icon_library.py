@@ -40,6 +40,11 @@ except ImportError:
 try:
     import cairosvg
     HAS_CAIROSVG = True
+except OSError:
+    # cairosvg imports fine but its native libcairo dependency isn't
+    # installed on this machine (common on Windows without a separate
+    # GTK/cairo install) — degrade the same as a missing package.
+    HAS_CAIROSVG = False
 except ImportError:
     HAS_CAIROSVG = False
 
