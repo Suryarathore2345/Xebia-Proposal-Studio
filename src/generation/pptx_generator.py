@@ -9,6 +9,7 @@ Orchestrates the full pipeline:
 """
 
 import sys
+from datetime import datetime
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
@@ -22,6 +23,8 @@ from generation.template_engine import pick_template, get_available_templates
 
 from generation.slide_builders import (
     create_presentation,
+    clear_slide,
+    draw_toc_content,
     build_cover_slide,
     build_toc_slide,
     build_section_divider,
@@ -42,6 +45,30 @@ from generation.slide_builders import (
 )
 from images.pexels_client import fetch_slide_image
 
+
+# Fixed theme for master-template mode (xebia_mohesr): the AI-generated
+# DesignTheme/blueprint system produces a different palette/font/background
+# treatment on every run, which looks like an unrelated theme bolted onto
+# slides 8+ next to the reused slides 1-7. These values are read directly
+# from the master file's own theme1.xml (dk2/TEXT_2 = 72648E is the accent
+# actually used for numbered badges and the Content_Basic layout's top-right
+# corner shape; accent3 = 6C1D5F and accent1 = 491E47 round out the family)
+# and its Segoe UI typography, so slides 8+ use the deck's REAL colors/fonts
+# instead of an invented ones.
+MOHESR_MASTER_THEME = DesignTheme(
+    theme_name="Xebia MOHESR Master",
+    primary_accent="#72648E",
+    secondary_accent="#6C1D5F",
+    card_accent="#72648E",
+    card_fill="#F7F8FC",
+    card_border="#E7E6E6",
+    heading_font="Segoe UI",
+    body_font="Segoe UI",
+    card_style="accent_top",
+    accent_cycle=["#72648E", "#6C1D5F", "#491E47"],
+    rationale="Colors/fonts read directly from the master template's own "
+              "theme1.xml, not AI-generated, so slides 8+ match slides 1-7.",
+)
 
 PHOTO_ELIGIBLE_LAYOUTS = {"content"}
 # "two_column" and "key_value" used to be listed here too, but
@@ -145,19 +172,45 @@ class ProposalPPTGenerator:
         self.template_info = tpl
         print(f"[PPTGenerator] Template: {tpl['name']} ({tpl['family']})")
 
-        print(f"[PPTGenerator] Generating design theme via {provider}...")
-        self.theme = generate_theme(plan, provider=provider)
-        print(f"[PPTGenerator] Theme: {self.theme.theme_name}")
-        print(f"[PPTGenerator] Fonts: {self.theme.heading_font}/{self.theme.body_font}, "
-              f"card_style={self.theme.card_style}")
-        if self.theme.rationale:
-            print(f"[PPTGenerator] Rationale: {self.theme.rationale}")
+        # Master-template mode: this template's own first N slides (cover,
+        # TOC, Xebia Overview front-matter) are reused verbatim instead of
+        # being rebuilt slide-by-slide. See TEMPLATE_REGISTRY's
+        # "reuse_master_slides" field and generate()'s cover/toc/
+        # corporate_overview handling below.
+        self.master_slide_count = int(tpl.get("reuse_master_slides") or 0)
+        self.reuse_master_slides = self.master_slide_count > 0
 
-        print(f"[PPTGenerator] Selecting slide blueprints via {provider}...")
-        self.specs = design_slides(plan, self.theme, provider=provider)
-        bp_ids = [s.blueprint_id for s in self.specs]
-        unique = len(set(bp_ids))
-        print(f"[PPTGenerator] {len(self.specs)} slides, {unique} unique blueprints")
+        if self.reuse_master_slides:
+            # Fixed, template-derived theme — no AI call, no per-slide
+            # blueprint (every content slide keeps the master's own native
+            # layout background/accent instead of a synthetic one). See
+            # generate()'s _patch_master_cover/_rebuild_master_toc for
+            # slides 1-2 and _build_closing for the one deliberate
+            # exception (the template's own dark "thank you" bookend layout).
+            self.theme = MOHESR_MASTER_THEME
+            print(f"[PPTGenerator] Using fixed master-template theme: {self.theme.theme_name}")
+            from generation.design_engine.slide_designer import build_slide_manifest
+            manifest = build_slide_manifest(plan, reuse_master_slides=True)
+            self.specs = [
+                SlideDesignSpec(slide_id=m["id"], slide_type=m["type"], blueprint_id=None)
+                for m in manifest
+            ]
+            print(f"[PPTGenerator] {len(self.specs)} slides, native template layouts (no blueprints)")
+        else:
+            print(f"[PPTGenerator] Generating design theme via {provider}...")
+            self.theme = generate_theme(plan, provider=provider)
+            print(f"[PPTGenerator] Theme: {self.theme.theme_name}")
+            print(f"[PPTGenerator] Fonts: {self.theme.heading_font}/{self.theme.body_font}, "
+                  f"card_style={self.theme.card_style}")
+            if self.theme.rationale:
+                print(f"[PPTGenerator] Rationale: {self.theme.rationale}")
+
+            print(f"[PPTGenerator] Selecting slide blueprints via {provider}...")
+            self.specs = design_slides(plan, self.theme, provider=provider,
+                                       reuse_master_slides=self.reuse_master_slides)
+            bp_ids = [s.blueprint_id for s in self.specs]
+            unique = len(set(bp_ids))
+            print(f"[PPTGenerator] {len(self.specs)} slides, {unique} unique blueprints")
 
         self.palette = _theme_to_palette(self.theme)
 
@@ -168,7 +221,8 @@ class ProposalPPTGenerator:
             body_font=self.theme.body_font,
             card_style=self.theme.card_style,
         )
-        self.prs = create_presentation(self._ds, template_path=tpl["path"])
+        self.prs = create_presentation(self._ds, template_path=tpl["path"],
+                                       keep_slides=self.master_slide_count)
 
         self._spec_map = {s.slide_id: s for s in self.specs}
         self._spec_index = 0
@@ -249,9 +303,20 @@ class ProposalPPTGenerator:
             section_data = sections.get(section_key, {})
 
             if section_key == "cover":
-                self._build_cover(section_data)
+                if self.reuse_master_slides:
+                    self._patch_master_cover(section_data)
+                else:
+                    self._build_cover(section_data)
             elif section_key == "table_of_contents":
-                self._build_toc(section_data)
+                if self.reuse_master_slides:
+                    self._rebuild_master_toc(section_data)
+                else:
+                    self._build_toc(section_data)
+            elif section_key == "corporate_overview" and self.reuse_master_slides:
+                # Already fully represented by the reused master slides
+                # (Xebia Overview divider + mission/values + global presence
+                # + engineering hubs + customer portfolio) — nothing to build.
+                continue
             elif section_key == "closing":
                 self._build_closing(section_data)
             elif section_key == "executive_summary":
@@ -313,6 +378,75 @@ class ProposalPPTGenerator:
         build_toc_slide(self.prs, style, display_names, self._next_slide_num(),
                         layout_name=self.template_info.get("toc_layout"))
 
+    # ── Master-template mode (reuse verbatim slides 1-7) ──────
+
+    @staticmethod
+    def _ordinal_date(dt: datetime) -> tuple[str, str]:
+        day = dt.day
+        suffix = "th" if 11 <= day % 100 <= 13 else {1: "st", 2: "nd", 3: "rd"}.get(day % 10, "th")
+        return f"{day}{suffix}", dt.strftime("%B %Y")
+
+    def _patch_master_cover(self, data: dict):
+        """Edit slide 1 (already the master template's own cover, kept
+        verbatim by create_presentation) in place: only the title and the
+        date change, everything else — confidentiality notice, background
+        image, logo art — stays exactly as authored in the source deck."""
+        slide = self.prs.slides[0]
+        new_title = data.get("title", self.plan.get("title", "Xebia Proposal"))
+
+        title_shape = slide.shapes.title
+        if title_shape is not None and title_shape.has_text_frame:
+            tf = title_shape.text_frame
+            runs = tf.paragraphs[0].runs
+            if runs:
+                runs[0].text = new_title
+                for extra in runs[1:]:
+                    extra.text = ""
+            else:
+                tf.text = new_title
+
+        day_str, month_year = self._ordinal_date(datetime.now())
+        for shape in slide.shapes:
+            if not shape.has_text_frame:
+                continue
+            for para in shape.text_frame.paragraphs:
+                runs = para.runs
+                if len(runs) >= 3 and runs[0].text.strip().rstrip(":") == "Date":
+                    runs[1].text = f"{day_str} "
+                    runs[2].text = month_year
+                    for extra in runs[3:]:
+                        extra.text = ""
+
+    def _rebuild_master_toc(self, data: dict):
+        """Redraw slide 2 (the master template's own static TOC, sized for
+        that specific deck's fixed section list) in place with a fresh TOC
+        reflecting this proposal's actual sections — same slide/part/layout
+        (so fonts/colors/branding still match), just cleared and redrawn
+        rather than replaced, since deleting a slide out of the middle of a
+        kept sequence and adding a new one risks a python-pptx slide
+        partname collision (its part-naming is count-based, not
+        max-used-based, so a gap from the deletion gets reused).
+        "Xebia Overview" is always listed first since slides 3-7 (the reused
+        Xebia Overview front-matter) are present in every deck regardless of
+        whether the plan's storyline names a corporate_overview section."""
+        storyline = self.plan.get("storyline", [])
+        display_names = ["Xebia Overview"]
+        for s in storyline:
+            if s in ("cover", "table_of_contents", "closing", "corporate_overview"):
+                continue
+            section_data = self.plan.get("sections", {}).get(s, {})
+            name = section_data.get("title", s.replace("_", " ").title())
+            display_names.append(name)
+
+        slide = self.prs.slides[1]
+        clear_slide(slide)
+
+        spec = SlideDesignSpec(slide_id="toc", slide_type="toc",
+                               blueprint_id="white_full_accent_line",
+                               accent_override=self.theme.primary_accent)
+        style = self._style_for_spec(spec)
+        draw_toc_content(slide, style, display_names)
+
     def _build_exec_summary(self, data: dict):
         # Always exactly one content slide here — same reasoning as _build_team.
         spec = self._next_spec()
@@ -365,7 +499,11 @@ class ProposalPPTGenerator:
                         slide_number=self._next_slide_num(),
                     )
                 elif layout and layout in PHOTO_ELIGIBLE_LAYOUTS and image_path:
-                    use_dark = self._photo_side_counter % 4 == 3
+                    # In master-template mode every content slide stays on
+                    # the template's own light layout — no periodic dark
+                    # photo variant, which would otherwise look like an
+                    # unrelated theme next to the reused slides 1-7.
+                    use_dark = (not self.reuse_master_slides) and self._photo_side_counter % 4 == 3
                     build_content_photo_slide(
                         self.prs, style,
                         title=slide_title,
@@ -456,6 +594,13 @@ class ProposalPPTGenerator:
     def _build_closing(self, data: dict):
         spec = self._next_spec()
         style = self._style_for_spec(spec)
+        if self.reuse_master_slides:
+            # closing_layout ("End-cover_dark") is the template's own dark
+            # bookend layout (same family as the cover) — blueprint-driven
+            # color-flipping is off in master-template mode, so set white
+            # text explicitly here instead of leaving the light-mode default.
+            style.title_color = "#FFFFFF"
+            style.body_color = "#E0E0E0"
         build_closing_slide(
             self.prs, style,
             title=data.get("title", "Thank You"),

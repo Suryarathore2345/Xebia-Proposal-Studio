@@ -69,6 +69,13 @@ TEMPLATE_REGISTRY: dict[str, dict] = {
         "chapter_layout": "Chapter_light",
         "closing_layout": "End-cover_dark",
         "toc_layout": "Table of contents",
+        # Master-template mode: reuse this file's own first 7 slides
+        # (cover, TOC, Xebia Overview divider, mission/values, global
+        # presence, engineering hubs, customer portfolio) verbatim in every
+        # generated deck instead of rebuilding them from scratch. Cover gets
+        # its title/date patched in place; TOC is regenerated to match the
+        # proposal's actual sections. See ProposalPPTGenerator.generate().
+        "reuse_master_slides": 7,
     },
     "xebia_carrington": {
         "file": "Xebia-Carrington_Microsoft_Fabric_Implementation_Engagement_.pptx",
@@ -134,13 +141,25 @@ def get_available_templates() -> list[str]:
     return available
 
 
+DEFAULT_TEMPLATE = "xebia_mohesr"
+
+
 def pick_template(template_name: str | None = None) -> dict:
-    """Pick a template by name, or randomly from available ones."""
+    """Pick a template by name. Falls back to DEFAULT_TEMPLATE (the current
+    master template) rather than a random choice when no name is given or
+    the requested one isn't available, so every generated deck uses the
+    same master template unless a caller explicitly asks for another one."""
     if template_name and template_name in TEMPLATE_REGISTRY:
         info = TEMPLATE_REGISTRY[template_name]
         path = info["dir"] / info["file"]
         if path.exists():
             return {**info, "name": template_name, "path": str(path)}
+
+    if DEFAULT_TEMPLATE in TEMPLATE_REGISTRY:
+        info = TEMPLATE_REGISTRY[DEFAULT_TEMPLATE]
+        path = info["dir"] / info["file"]
+        if path.exists():
+            return {**info, "name": DEFAULT_TEMPLATE, "path": str(path)}
 
     available = get_available_templates()
     if not available:

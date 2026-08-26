@@ -34,8 +34,14 @@ class SlideDesignSpec:
 
 # ── Slide manifest builder ──────────────────────────────────────
 
-def build_slide_manifest(plan: dict) -> list[dict]:
-    """Enumerate every slide that will be generated, in order."""
+def build_slide_manifest(plan: dict, reuse_master_slides: bool = False) -> list[dict]:
+    """Enumerate every slide that will be generated, in order.
+
+    When reuse_master_slides is True, cover/TOC/corporate_overview are
+    entirely represented by the master template's own reused slides
+    (patched/regenerated in place, not spec-driven) — they're excluded here
+    so design_slides()'s output stays positionally aligned with the actual
+    _next_spec() calls ProposalPPTGenerator.generate() makes."""
     slides = []
     storyline = plan.get("storyline", [])
     sections = plan.get("sections", {})
@@ -45,11 +51,15 @@ def build_slide_manifest(plan: dict) -> list[dict]:
         title = section.get("title", section_key.replace("_", " ").title())
 
         if section_key == "cover":
-            slides.append({"id": "cover", "type": "cover", "title": title})
+            if not reuse_master_slides:
+                slides.append({"id": "cover", "type": "cover", "title": title})
         elif section_key == "table_of_contents":
-            slides.append({"id": "toc", "type": "toc", "title": "Table of Contents"})
+            if not reuse_master_slides:
+                slides.append({"id": "toc", "type": "toc", "title": "Table of Contents"})
         elif section_key == "closing":
             slides.append({"id": "closing", "type": "closing", "title": title})
+        elif section_key == "corporate_overview" and reuse_master_slides:
+            continue
         else:
             slides.append({
                 "id": f"{section_key}_div",
@@ -136,10 +146,11 @@ def _extract_json_array(text: str) -> str:
     return text
 
 
-def design_slides(plan: dict, theme: DesignTheme, provider: str = "claude") -> list[SlideDesignSpec]:
+def design_slides(plan: dict, theme: DesignTheme, provider: str = "claude",
+                  reuse_master_slides: bool = False) -> list[SlideDesignSpec]:
     """Select blueprints for all slides, with a same-provider retry, a
     cross-provider retry, and a rule-based fallback if both LLM attempts fail."""
-    manifest = build_slide_manifest(plan)
+    manifest = build_slide_manifest(plan, reuse_master_slides=reuse_master_slides)
 
     other_provider = "gemini" if provider == "claude" else "claude"
     for attempt_provider in (provider, other_provider):

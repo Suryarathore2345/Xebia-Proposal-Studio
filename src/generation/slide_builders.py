@@ -123,17 +123,26 @@ def _rgb(hex_str: str) -> RGBColor:
     return RGBColor(int(h[0:2], 16), int(h[2:4], 16), int(h[4:6], 16))
 
 
-def create_presentation(ds: ProposalDesignSystem, template_path: str | None = None) -> Presentation:
+def create_presentation(ds: ProposalDesignSystem, template_path: str | None = None,
+                        keep_slides: int = 0) -> Presentation:
+    """Load the template. By default every one of its own slides is
+    stripped, keeping only slide masters/layouts (the normal "build every
+    slide from scratch" path). When keep_slides > 0, the template's own
+    first `keep_slides` slides are left in place verbatim (used by
+    master-template mode to reuse a source deck's real front-matter slides
+    instead of rebuilding them)."""
     if template_path is None:
         from generation.template_engine import generate_theme
         template_path = generate_theme()
     prs = create_themed_presentation(template_path)
-    # Remove all existing slides from the template — keep only slide masters/layouts
-    while len(prs.slides) > 0:
-        rId = prs.slides._sldIdLst[0].get('{http://schemas.openxmlformats.org/officeDocument/2006/relationships}id')
+    # Remove every slide from index `keep_slides` onward — keep only slide
+    # masters/layouts (plus the first `keep_slides` slides, if requested).
+    while len(prs.slides._sldIdLst) > keep_slides:
+        sldId = prs.slides._sldIdLst[keep_slides]
+        rId = sldId.get('{http://schemas.openxmlformats.org/officeDocument/2006/relationships}id')
         if rId:
             prs.part.drop_rel(rId)
-        prs.slides._sldIdLst.remove(prs.slides._sldIdLst[0])
+        prs.slides._sldIdLst.remove(sldId)
     return prs
 
 
@@ -500,6 +509,25 @@ def build_toc_slide(prs: Presentation, style: SlideStyle,
                     items: list[str], slide_number: int = 0,
                     layout_name: str = None) -> None:
     slide = _add_slide(prs, layout_name or "Content_Basic")
+    draw_toc_content(slide, style, items)
+
+
+def clear_slide(slide) -> None:
+    """Remove every shape from a slide, leaving it blank but keeping its
+    part identity, layout association, and relationships intact. Used to
+    redraw content into an EXISTING slide (e.g. master-template mode's TOC
+    rebuild) instead of adding a new one — python-pptx names new slide
+    parts by count, not by scanning used numbers, so deleting a slide out
+    of the middle of a kept sequence and then add_slide()-ing a
+    replacement can collide with an already-used partname."""
+    from pptx.oxml.ns import qn
+    spTree = slide.shapes._spTree
+    for tag in ("p:sp", "p:pic", "p:graphicFrame", "p:grpSp", "p:cxnSp"):
+        for el in list(spTree.iterchildren(qn(tag))):
+            spTree.remove(el)
+
+
+def draw_toc_content(slide, style: SlideStyle, items: list[str]) -> None:
     _apply_composition(slide, style)
     title_ph = _fill_ph(slide, 0, "Table of Contents", size=SZ_TITLE, color=style.title_color,
                         bold=True, font_name=style.heading_font)
