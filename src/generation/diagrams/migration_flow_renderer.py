@@ -78,6 +78,24 @@ ZONE_THEMES = {
 }
 
 
+# "tiles" group style geometry — a named tuple of constants shared between
+# _estimate_group_h (sizing) and _draw_item_tiles (drawing) so they can't
+# drift apart the way icons' plain label_h once did (see the "before" bug
+# in migration_flow_renderer's own history: a mismatch here doesn't error,
+# it just silently drops content).
+_TILE_ICON_SIZE = 0.50
+_TILE_MIN_W = 1.35
+_TILE_MAX_W = 1.90
+# Textbox height needs real text height (bold 7pt ~0.09-0.12in measured via
+# PIL) PLUS PowerPoint's own default 0.05in top+bottom margins (confirmed
+# via TextFrame.margin_top/bottom) — 0.16in was sized against the font
+# size alone and came up short once actually measured.
+_TILE_TITLE_H = 0.22
+_TILE_SUBTITLE_H = 0.34
+_TILE_PAD = 0.10
+_TILE_TOTAL_H = _TILE_PAD * 2 + _TILE_ICON_SIZE + 0.04 + _TILE_TITLE_H + _TILE_SUBTITLE_H
+
+
 def _item_name(item) -> str:
     """Bare technology/service name for icon lookup — a dict item's
     "qualifier" is descriptive context, not part of the product name, so
@@ -110,6 +128,29 @@ def _item_label(item) -> str:
         qualifier = item.get("qualifier", "")
         return f"{name} · {qualifier}" if qualifier else name
     return str(item)
+
+
+def _item_subtitle(item) -> str:
+    """A dict item's qualifier, used as a standalone second line by the
+    "tiles" style (bold title / italic subtitle stacked, rather than
+    joined inline with "·") — the same field, a different rendering,
+    matching how real reference decks caption a tile like "Lakehouse
+    Bronze" with "Typically, Raw & different file formats" underneath."""
+    if isinstance(item, dict):
+        return item.get("qualifier", "")
+    return ""
+
+
+def _item_accent(item, theme: dict) -> str:
+    """Per-item accent override for the "tiles" style (e.g. a medallion
+    tier's own color — bronze/silver/gold — rather than the whole zone's
+    single theme color); falls back to the zone theme's border color when
+    the item doesn't specify one."""
+    if isinstance(item, dict):
+        accent = item.get("accent")
+        if accent:
+            return accent
+    return theme["border"]
 
 
 class MigrationFlowRenderer:
@@ -303,6 +344,15 @@ class MigrationFlowRenderer:
             items_h = rows * pill_h + (rows - 1) * 0.04
         elif style_hint == "flow":
             items_h = 0.22
+        elif style_hint == "tiles":
+            # Mirrors _draw_item_tiles's own geometry exactly — same
+            # lesson as the "icons" branch above, this budget is what
+            # _draw_group sizes the card from, so it has to match what
+            # gets drawn or the fix just moves the overflow elsewhere.
+            col_w = max(_TILE_MIN_W, min(_TILE_MAX_W, avail_w / min(len(items), 3)))
+            cols = max(1, int(avail_w / col_w))
+            rows = -(-len(items) // cols)
+            items_h = rows * _TILE_TOTAL_H
         else:
             items_h = 0.20
 
@@ -499,6 +549,9 @@ class MigrationFlowRenderer:
         if style_hint == "icons":
             self._draw_item_icons(items, x + 0.06, items_y,
                                   w - 0.12, items_h, theme)
+        elif style_hint == "tiles":
+            self._draw_item_tiles(items, x + 0.06, items_y,
+                                  w - 0.12, items_h, theme)
         elif style_hint == "pills" and w >= 1.2:
             self._draw_item_pills(items, x + 0.06, items_y,
                                   w - 0.12, items_h, theme)
@@ -549,6 +602,61 @@ class MigrationFlowRenderer:
                         _item_label(item), 5.5, NEUTRALS.DARK_GRAY,
                         alignment=PP_ALIGN.CENTER,
                         font_name=self.body_font)
+
+    # ── Tile Items ───────────────────────────────────────────
+
+    def _draw_item_tiles(self, items: list, x: float, y: float,
+                         w: float, h: float, theme: dict):
+        """Icon-top / bold-title / italic-subtitle cards, each with its own
+        light background and an optional per-item accent color — the
+        "Lakehouse Bronze / Typically, Raw & different file formats" style
+        tile found in Xebia's own reference decks (MOHESR slide 16), for
+        a handful of named, individually-captioned things (medallion tiers,
+        environment stages) rather than a dense icon grid of many peers."""
+        if not items:
+            return
+
+        col_w = max(_TILE_MIN_W, min(_TILE_MAX_W, w / min(len(items), 3)))
+        cols = max(1, int(w / col_w))
+        remaining_space = w - cols * col_w
+        gap_x = remaining_space / max(cols - 1, 1) if cols > 1 else 0
+
+        for i, item in enumerate(items):
+            col = i % cols
+            row = i // cols
+            tx = x + col * (col_w + gap_x)
+            ty = y + row * (_TILE_TOTAL_H + 0.04)
+
+            if ty + _TILE_TOTAL_H > y + h:
+                break
+
+            accent = _item_accent(item, theme)
+            tile_w = col_w - 0.06
+            add_rounded_rectangle(
+                self.slide, tx, ty, tile_w, _TILE_TOTAL_H,
+                fill_color="#FFFFFF", line_color=accent, line_width=1.0,
+            )
+
+            icon_x = tx + (tile_w - _TILE_ICON_SIZE) / 2
+            self._add_tech_icon(icon_x, ty + _TILE_PAD, _TILE_ICON_SIZE,
+                                _item_name(item), {"border": accent})
+
+            title_y = ty + _TILE_PAD + _TILE_ICON_SIZE + 0.04
+            add_textbox(self.slide, tx + 0.04, title_y, tile_w - 0.08,
+                        _TILE_TITLE_H, _item_name(item), 7, accent,
+                        bold=True, alignment=PP_ALIGN.CENTER,
+                        font_name=self.font)
+
+            subtitle = _item_subtitle(item)
+            if subtitle:
+                sub_box = add_textbox(
+                    self.slide, tx + 0.05, title_y + _TILE_TITLE_H,
+                    tile_w - 0.10, _TILE_SUBTITLE_H,
+                    subtitle, 5.5, NEUTRALS.MID_GRAY,
+                    alignment=PP_ALIGN.CENTER, font_name=self.body_font,
+                )
+                for para in sub_box.text_frame.paragraphs:
+                    para.font.italic = True
 
     def _add_tech_icon(self, x: float, y: float, size: float,
                        name: str, theme: dict):
