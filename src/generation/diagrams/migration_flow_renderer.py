@@ -182,6 +182,15 @@ class MigrationFlowRenderer:
         self.font = style.heading_font if hasattr(style, 'heading_font') else "Arial"
         self.body_font = style.body_font if hasattr(style, 'body_font') else "Arial"
 
+        # Final drawn bounding box of every zone/item that declares an
+        # "id" — populated as _draw_zone/_draw_item_icons/_draw_item_tiles/
+        # _draw_item_pills actually place things, consumed by
+        # _draw_connections() at the very end of render() once every
+        # position is known. A dict on self rather than a value threaded
+        # through every draw method's signature, since all of those are
+        # already methods of this one renderer instance.
+        self.positions: dict[str, tuple[float, float, float, float]] = {}
+
     @staticmethod
     def _safe_content_top(slide) -> float:
         """Bottom edge of this slide's title placeholder, plus margin —
@@ -195,6 +204,16 @@ class MigrationFlowRenderer:
             return max(fallback, bottom + margin)
         except Exception:
             return fallback
+
+    def _record_position(self, item_or_zone, x: float, y: float,
+                         w: float, h: float):
+        """Remember a drawn shape's bounding box under its own "id", if it
+        declares one — the raw material _draw_connections() needs to
+        connect two specific named things instead of two whole zones."""
+        if isinstance(item_or_zone, dict):
+            item_id = item_or_zone.get("id")
+            if item_id:
+                self.positions[item_id] = (x, y, w, h)
 
     # ── Public ────────────────────────────────────────────────
 
@@ -309,6 +328,16 @@ class MigrationFlowRenderer:
             legend_y = self.content_top + zones_h + journey_h + bottom_h + 0.04
             self._draw_legend(legend, legend_y)
 
+        connections = self.data.get("connections", [])
+        if connections:
+            # Only runs after every zone/group/item above has been drawn
+            # and recorded its position in self.positions — a connection
+            # naming an id that was never drawn (typo, or the item just
+            # doesn't exist in this diagram) is silently skipped rather
+            # than raising, same tolerance-for-bad-LLM-output posture as
+            # the rest of this renderer.
+            self._draw_connections(connections)
+
     # ── Content-height estimation ────────────────────────────
 
     def _estimate_group_h(self, group: dict, group_w: float) -> float:
@@ -410,6 +439,7 @@ class MigrationFlowRenderer:
         if border_style == "dashed":
             set_dash_style(zone_shape, dash="dash",
                            color=theme["border"], width=1.8)
+        self._record_position(zone, x, y, w, h)
 
         # Title badge — colored pill at top-center
         title = zone.get("title", "")
@@ -602,6 +632,7 @@ class MigrationFlowRenderer:
                         _item_label(item), 5.5, NEUTRALS.DARK_GRAY,
                         alignment=PP_ALIGN.CENTER,
                         font_name=self.body_font)
+            self._record_position(item, ix, iy, col_w, item_total_h)
 
     # ── Tile Items ───────────────────────────────────────────
 
@@ -657,6 +688,8 @@ class MigrationFlowRenderer:
                 )
                 for para in sub_box.text_frame.paragraphs:
                     para.font.italic = True
+
+            self._record_position(item, tx, ty, tile_w, _TILE_TOTAL_H)
 
     def _add_tech_icon(self, x: float, y: float, size: float,
                        name: str, theme: dict):
@@ -719,6 +752,7 @@ class MigrationFlowRenderer:
                         pill_w - 0.08, pill_h - 0.04,
                         label, pill_size, "#FFFFFF", alignment=PP_ALIGN.CENTER,
                         font_name=self.body_font)
+            self._record_position(item, px, py, pill_w, pill_h)
             px += pill_w + pill_gap_x
 
     # ── Flow Items ───────────────────────────────────────────
@@ -780,6 +814,65 @@ class MigrationFlowRenderer:
         head.fill.fore_color.rgb = rgb(arrow_color)
         head.line.fill.background()
         head.rotation = 90
+
+    # ── Named Connections ─────────────────────────────────────
+
+    @staticmethod
+    def _pick_anchor_points(box_a: tuple, box_b: tuple) -> tuple:
+        """Pick the pair of edge-midpoints on two boxes that face each
+        other, so the connector runs the short way round instead of
+        crossing back through either box. box_* are (x, y, w, h)."""
+        ax, ay, aw, ah = box_a
+        bx, by, bw, bh = box_b
+        a_cx, a_cy = ax + aw / 2, ay + ah / 2
+        b_cx, b_cy = bx + bw / 2, by + bh / 2
+        dx, dy = b_cx - a_cx, b_cy - a_cy
+
+        if abs(dy) >= abs(dx):
+            # Predominantly vertical relationship — connect top/bottom edges.
+            if dy >= 0:
+                return (a_cx, ay + ah), (b_cx, by)
+            return (a_cx, ay), (b_cx, by + bh)
+        # Predominantly horizontal — connect left/right edges.
+        if dx >= 0:
+            return (ax + aw, a_cy), (bx, b_cy)
+        return (ax, a_cy), (bx + bw, b_cy)
+
+    def _draw_connections(self, connections: list):
+        """Elbow-routed connectors between two specifically-named,
+        already-drawn items/zones — for the occasional real, named
+        relationship a diagram needs beyond its normal zone-to-zone flow
+        (e.g. a medallion tier feeding an MDM step, matching how MOHESR
+        slide 16's own "Silver -> MDM" and "MDM -> Gold" connectors work).
+        Deliberately plain lines with no arrowhead: the reference-deck
+        audit found unarrowed lines are actually the MORE common notation
+        for this kind of cross-cutting/callout relationship, real directed
+        arrows being reserved for the main data-flow direction, which the
+        normal zone-to-zone arrows already cover."""
+        for conn in connections:
+            from_id = conn.get("from")
+            to_id = conn.get("to")
+            box_a = self.positions.get(from_id)
+            box_b = self.positions.get(to_id)
+            if not box_a or not box_b:
+                continue
+
+            (x1, y1), (x2, y2) = self._pick_anchor_points(box_a, box_b)
+            color = conn.get("color") or NEUTRALS.MID_GRAY
+            connector = self.slide.shapes.add_connector(
+                MSO_CONNECTOR.ELBOW,
+                Inches(x1), Inches(y1), Inches(x2), Inches(y2),
+            )
+            connector.line.color.rgb = rgb(color)
+            connector.line.width = Pt(1.0)
+
+            label = conn.get("label", "")
+            if label:
+                mid_x, mid_y = (x1 + x2) / 2, (y1 + y2) / 2
+                label_w = max(0.5, len(label) * 0.05 + 0.1)
+                add_textbox(self.slide, mid_x - label_w / 2, mid_y - 0.09,
+                           label_w, 0.16, label, 5.5, color,
+                           alignment=PP_ALIGN.CENTER, font_name=self.body_font)
 
     # ── Journey Labels ────────────────────────────────────────
 
