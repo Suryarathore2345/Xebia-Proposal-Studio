@@ -19,7 +19,7 @@ from pptx.dml.color import RGBColor
 
 from generation.design_engine.primitives import (
     rgb, add_rounded_rectangle, add_rectangle, gradient_fill,
-    set_fill_opacity, set_dash_style, send_to_back,
+    set_fill_opacity, set_dash_style, send_to_back, add_right_triangle,
 )
 from generation.design_engine.palette import PURPLE, NEUTRALS, STAGE
 from generation.diagrams.diagram_primitives import (
@@ -200,6 +200,22 @@ class MigrationFlowRenderer:
             fill_color="#F7F8FA", line_color="#E0E2E6", line_width=1.0,
         )
         send_to_back(outer, self.slide)
+
+        # Small angled corner accent, top-right — matches the branded
+        # "framed" look real Xebia reference decks give their architecture
+        # diagrams (a plain flat card reads as generic/generated). Drawn
+        # right after the outer card and left at the top of the z-order at
+        # this point, so it sits above the card's own fill but under every
+        # zone/group/item drawn from here on.
+        corner_size = 0.42
+        corner = add_right_triangle(
+            self.slide,
+            self.content_left + self.content_width + 0.08 - corner_size,
+            self.content_top - 0.08,
+            corner_size, corner_size,
+            fill_color=PURPLE.SOFT, rotation=180,
+        )
+        set_fill_opacity(corner, 0.55)
 
         arrow_gap = 0.28
         num_arrows = len(zones) - 1
