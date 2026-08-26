@@ -105,17 +105,39 @@ def _item_name(item) -> str:
     return str(item)
 
 
-def _icon_label_needs_2_lines(items: list, col_w: float) -> bool:
-    """Whether any item's label is long enough to wrap to a 2nd line at
-    the compact 5.5pt icon-label size and the given column width. Checks
-    actual rendered text length, not just "has a qualifier dict" — a
-    plain string the model wrote with its own long parenthetical (e.g.
-    "Fabric Pipelines (SSIS Replacement)") needs the same extra room a
-    structured qualifier does, confirmed by measuring real generated
-    output where exactly this shape of item overflowed."""
+def _icon_label_lines_needed(items: list, col_w: float) -> int:
+    """Max number of lines any item's label needs to wrap to at the
+    compact 5.5pt icon-label size and the given column width, capped at 3
+    — one pathologically long label (say, a run-on sentence the model
+    wrote instead of a short label) still gets a taller row, but doesn't
+    balloon the whole grid trying to fit it exactly. Checks actual
+    rendered text length, not just "has a qualifier dict" — a plain
+    string the model wrote with its own long parenthetical (e.g. "Fabric
+    Pipelines (SSIS Replacement)") needs the same extra room a structured
+    qualifier does.
+
+    This used to be a boolean ("does this need >=2 lines?"), which is why
+    a label needing 3 lines (e.g. "Azure Event Hubs (POS Streams)" in a
+    narrow column — confirmed via a real generated deck, caught by the
+    geometry-check QA pass) still only got the 2-line budget and
+    overflowed: the boolean couldn't distinguish "needs 2" from "needs 3
+    or more", so both got treated identically."""
     avg_char_w_in = 5.5 * 0.0072
     chars_per_line = max(1, (col_w - 0.06) / avg_char_w_in)
-    return any(len(_item_label(it)) > chars_per_line for it in items)
+    max_lines = 1
+    for it in items:
+        lines = -(-len(_item_label(it)) // int(chars_per_line))
+        max_lines = max(max_lines, lines)
+    return min(max_lines, 3)
+
+
+def _icon_label_h(items: list, col_w: float) -> float:
+    """Label box height for the tallest label in this item set — 0.16in
+    for a single line (the original compact size), +0.14in per
+    additional line, matching what 0.30in already meant for 2 lines
+    before this was generalized past a 1-vs-2 boolean."""
+    lines = _icon_label_lines_needed(items, col_w)
+    return 0.16 + (lines - 1) * 0.14
 
 
 def _item_label(item) -> str:
@@ -356,7 +378,7 @@ class MigrationFlowRenderer:
             # _draw_item_icons just moves the overflow into the group's
             # own boundary instead of removing it.
             col_w = max(0.58, min(0.90, avail_w / min(len(items), 4)))
-            item_total_h = 0.40 + (0.30 if _icon_label_needs_2_lines(items, col_w) else 0.16) + 0.03
+            item_total_h = 0.40 + _icon_label_h(items, col_w) + 0.03
             cols = max(1, int(avail_w / col_w))
             rows = -(-len(items) // cols)
             items_h = rows * item_total_h
@@ -606,7 +628,7 @@ class MigrationFlowRenderer:
         # Grow the whole grid's row height when ANY item's label is long
         # enough to wrap at this column width, so rows stay aligned —
         # plain short items keep the original compact height otherwise.
-        label_h = 0.30 if _icon_label_needs_2_lines(items, col_w) else 0.16
+        label_h = _icon_label_h(items, col_w)
         item_total_h = icon_size + label_h + 0.03
 
         cols = max(1, int(w / col_w))
