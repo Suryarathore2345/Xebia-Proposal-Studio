@@ -344,9 +344,45 @@ class ProposalPPTGenerator:
                                                    customer_name=self.plan.get("customer"))
                 xebia_slides_added = True
 
+        self._run_qa_checks()
         self.prs.save(str(output_path))
         print(f"[PPTGenerator] Saved: {output_path} ({self._spec_index} slides)")
         return output_path
+
+    def _run_qa_checks(self):
+        """Automated geometry validation before the file ships — the same
+        class of check the manual visual-QA audit did by hand once, now
+        run on every generation. Never blocks or modifies the deck; findings
+        are logged so they're visible during generation/testing instead of
+        only being caught if someone happens to open the file and look.
+
+        Skips the reused master-template slides (1..master_slide_count) —
+        confirmed by a real run that they DO surface findings (e.g. the
+        MOHESR cover's own confidentiality notice, its Global Presence map
+        labels), but that content is verbatim and untouched by this
+        pipeline; a finding there isn't actionable, it's just noise
+        drowning out anything found in content we actually generate."""
+        try:
+            from generation.qa.geometry_check import check_presentation, check_slide
+            if self.reuse_master_slides:
+                findings = []
+                for i, slide in enumerate(self.prs.slides):
+                    if i < self.master_slide_count:
+                        continue
+                    findings.extend(check_slide(slide, slide_label=f"slide {i + 1}"))
+            else:
+                findings = check_presentation(self.prs)
+        except Exception as e:
+            print(f"[QA] geometry check itself failed, skipping: {e}")
+            return
+
+        if not findings:
+            print("[QA] No geometry issues found")
+            return
+
+        print(f"[QA] {len(findings)} geometry issue(s) found:")
+        for f in findings:
+            print(f"  [QA] {f['slide']} - {f['shape']!r}: {f['issue']} — {f['detail']}")
 
     # ── Section builders ──────────────────────────────────────
 
