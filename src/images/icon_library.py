@@ -248,11 +248,21 @@ class IconLibrary:
         # every indexed key, preferring the longest match — long enough to
         # avoid short/generic words causing false positives, but catching
         # a registered term embedded inside a longer descriptive phrase.
+        #
+        # The `norm in key` direction (query hiding inside a longer key) is
+        # only safe when the query itself is long enough — a short query
+        # like "SAP" (3 chars) is a coincidental substring of dozens of
+        # unrelated keys ("AWSAppFlow" normalizes to "awsappflow", which
+        # contains "sap" purely by accident) and would confidently return
+        # the wrong icon. The `key in norm` direction doesn't have this
+        # problem since `key` is already guarded to >=5 chars — a whole
+        # recognized term appearing intact inside a longer descriptive
+        # phrase is a real match, not a coincidence.
         best_key = None
         for key in self._index:
             if len(key) < 5:
                 continue
-            if key in norm or norm in key:
+            if key in norm or (len(norm) >= 5 and norm in key):
                 if best_key is None or len(key) > len(best_key):
                     best_key = key
         return self._index.get(best_key) if best_key else None

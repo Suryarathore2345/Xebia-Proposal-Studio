@@ -458,7 +458,14 @@ class MigrationFlowRenderer:
         set_fill_opacity(grp, 0.45)
 
         label = group.get("label", "")
-        label_h = 0.18
+        # Must match _estimate_group_h's label_h exactly (0 when there's no
+        # label) — that function is what card_h was sized from, so
+        # reserving 0.18 here unconditionally silently ate into the items
+        # area on any label-less group, shrinking items_h below what
+        # _draw_item_icons' own per-row math needs and making it break
+        # out on the very first row (zero items drawn, no error, no
+        # placeholder — the card just renders empty).
+        label_h = 0.18 if label else 0.0
         if label:
             add_textbox(self.slide, x + 0.06, y + 0.03, w - 0.12, label_h,
                         label, 6.5, theme["label"], bold=True,

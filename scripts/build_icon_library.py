@@ -48,6 +48,41 @@ except OSError:
 except ImportError:
     HAS_CAIROSVG = False
 
+try:
+    import resvg_py
+    HAS_RESVG = True
+except ImportError:
+    HAS_RESVG = False
+
+
+def _svg_bytes_to_png(svg_bytes: bytes, out_png: Path, size: int) -> bool:
+    """Rasterize SVG to a transparent-background PNG, preferring cairosvg
+    (matches this script's original output) and falling back to resvg_py —
+    a self-contained Rust binary wheel with no system Cairo dependency,
+    which is what actually unblocked 76 previously SVG-only registry
+    entries (PostgreSQL, MySQL, Kafka, Docker, Kubernetes, Terraform,
+    GitHub, Jenkins, Databricks, and more) on a machine where libcairo
+    isn't installed. Without either backend, the SVG is still saved but
+    no PNG is produced — get_icon()'s default png_only=True lookup will
+    silently miss the entry until one of these is available."""
+    if HAS_CAIROSVG:
+        try:
+            cairosvg.svg2png(bytestring=svg_bytes, write_to=str(out_png),
+                              output_width=size, output_height=size,
+                              background_color="white")
+            return True
+        except Exception:
+            pass
+    if HAS_RESVG:
+        try:
+            raw = resvg_py.svg_to_bytes(svg_string=svg_bytes.decode("utf-8"),
+                                        width=size, height=size)
+            out_png.write_bytes(bytes(raw))
+            return True
+        except Exception:
+            pass
+    return False
+
 # Mirror used when the primary simpleicons.org CDN is unreachable (e.g. a
 # restrictive network policy) — same open-source icon set, served from
 # GitHub instead.
@@ -568,13 +603,7 @@ def download_thirdparty(size: int = 128) -> tuple[int, int]:
             continue
 
         out_svg.write_bytes(data)
-        if HAS_CAIROSVG:
-            try:
-                cairosvg.svg2png(bytestring=data, write_to=str(out_png),
-                                  output_width=size, output_height=size,
-                                  background_color="white")
-            except Exception:
-                pass
+        _svg_bytes_to_png(data, out_png, size)
         print(f"  ✓ {cid}")
         ok += 1
     print(f"\n  Third-party: {ok} OK, {fail} failed")
