@@ -111,6 +111,36 @@ CARD_BORDER_NEUTRAL = NEUTRALS.LIGHT_GRAY
 CARD_BORDER_DARK  = "#3F3F50"
 
 
+# ── Architecture-Diagram Stage Colors ───────────────────────────
+# Used by the migration-flow / architecture diagram renderers to color
+# pipeline stages (source, migration, target-cloud, data-platform,
+# outcomes). These carry architectural-stage meaning, not brand identity
+# — real Xebia reference decks overwhelmingly color diagrams by pipeline
+# stage rather than by vendor brand, so this sits alongside (not inside)
+# the purple-only brand rule above by design. "purple" and "dark" zone
+# themes still draw on PURPLE/NEUTRALS above rather than duplicating here.
+
+@dataclass(frozen=True)
+class StageTheme:
+    border: str
+    bg: str
+    group_bg: str
+    accent: str
+    title: str
+    label: str
+
+
+class STAGE:
+    ORANGE = StageTheme(border="#E07B20", bg="#FEF6EE", group_bg="#FFF8F0",
+                         accent="#D4700F", title="#C46A18", label="#B85C0A")
+    TEAL   = StageTheme(border="#0E8B7B", bg="#EFF9F8", group_bg="#F0FAF9",
+                         accent="#0D7A6B", title="#0B7266", label="#0A6459")
+    BLUE   = StageTheme(border="#2574A9", bg="#EFF5FB", group_bg="#F2F7FC",
+                         accent="#1F6391", title="#1E5F8A", label="#1B5680")
+    GREEN  = StageTheme(border="#1E8449", bg="#EEF8F2", group_bg="#F2FAF5",
+                         accent="#1A7840", title="#196F3D", label="#166B37")
+
+
 # ── Text Colors ─────────────────────────────────────────────────
 
 TEXT_HEADING_LIGHT = NEUTRALS.NEAR_BLACK

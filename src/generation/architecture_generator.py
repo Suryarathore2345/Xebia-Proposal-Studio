@@ -1,98 +1,49 @@
 """Architecture diagram content generator.
 
-Takes a user's architecture requirements and reference content,
-then uses Claude to produce structured diagram data that the
-MigrationFlowRenderer (or other renderers) can consume directly.
+Two entry points:
+
+- generate_architecture_diagram(): produce a diagram from a free-text
+  requirement (used by scripts/test_architecture_gen.py, and available
+  for any future direct-generation use case).
+- elaborate_architecture_diagrams(): the live pipeline's dedicated
+  second pass. The main proposal-plan call (llm/anthropic_client.py)
+  already decides *how many* architecture/migration_flow slides a
+  proposal needs and *what each one is for* — but it produces that
+  content sharing one giant call's attention with ~15 other slide
+  types. This pass re-elaborates each migration_flow diagram with a
+  full token budget and diagram-scoped retrieval, so architecture depth
+  isn't a casualty of the plan call's competing priorities. It is
+  strictly additive: on any failure it leaves the plan's own diagram
+  content untouched, so it can never make a proposal generation fail.
 """
 
 from __future__ import annotations
 
 import json
 
-from llm.anthropic_client import get_client, MODEL
+from llm.anthropic_client import get_client, MODEL, ARCHITECTURE_DIAGRAM_GUIDANCE
 
 
-ARCHITECTURE_SYSTEM_PROMPT = r"""You are an expert enterprise solution architect creating architecture diagram content for client-facing consulting proposals.
+ARCHITECTURE_SYSTEM_PROMPT = f"""You are an expert enterprise solution architect creating architecture diagram content for client-facing consulting proposals.
 
-Your job: analyze the user's architecture requirements and any reference material, then produce a structured JSON specification for a multi-zone left-to-right architecture flow diagram.
+Your job: analyze the user's architecture requirements and any reference material, then produce a structured JSON specification for a "migration_flow" diagram (or, if a simple single-overview layered stack is genuinely a better fit, an "architecture" layers list instead).
 
-The diagram will be rendered on a 16:9 PowerPoint slide (13.333" × 7.5"). It must communicate the transformation story in 5–10 seconds. Prioritize storytelling and visual clarity over technical completeness.
+The diagram will be rendered on a 16:9 PowerPoint slide (13.333" x 7.5"). It must communicate the architecture clearly and, for an enterprise-grade proposal, with real depth — not a shallow 3-box sketch. Prioritize clarity and technical accuracy together; don't sacrifice one for the other.
 
-OUTPUT FORMAT — return ONLY a valid JSON object with this exact structure:
+OUTPUT FORMAT — return ONLY a valid JSON object with this exact structure (a bare "diagram" object — no "layout"/"title" wrapper, no surrounding section keys):
 
-{
+{{
   "title": "Diagram title (shown as slide title)",
   "subtitle": "Optional one-line subtitle",
-  "zones": [
-    {
-      "id": "unique_zone_id",
-      "title": "Zone Title (keep under 30 chars)",
-      "color": "orange|teal|blue|purple|green|dark",
-      "width_ratio": 1.0,
-      "groups": [
-        {
-          "label": "Group Label (keep under 25 chars)",
-          "items": ["Item 1", "Item 2", "Item 3"],
-          "style": "icons|pills|flow|text"
-        }
-      ]
-    }
-  ],
-  "bottom_bands": [
-    {
-      "label": "Band Label",
-      "items": ["Cross-cutting item 1", "Item 2", "Item 3"],
-      "color": "purple"
-    }
-  ],
-  "journey_labels": [
-    {
-      "label": "Transformation Journey Name",
-      "from_zone_index": 0,
-      "to_zone_index": 2
-    }
-  ]
-}
+  ...the rest of the "diagram" shape described below...
+}}
 
-FIELD DETAILS:
-
-zones: Array of 3-6 zones displayed left to right. Each zone represents a major architectural domain.
-  - id: unique identifier (snake_case)
-  - title: zone header text — concise, business-friendly
-  - color: visual theme — use "orange" for source/current state, "teal" for migration/transformation, "blue" for target cloud, "purple" for data/analytics platforms, "green" for outcomes/value, "dark" for governance
-  - width_ratio: relative width (1.0 is standard, 0.5 is half, 1.2 is wider). Outcome zones should be narrower (0.5-0.7). Major platform zones can be wider (1.0-1.2).
-  - groups: 2-5 logical groupings within the zone
-
-groups: Sub-sections within a zone.
-  - label: group heading — concise domain name
-  - items: 2-5 items per group. Use SHORT labels (2-4 words max). Use service names, capability names, or component names — not sentences.
-  - style: "icons" (renders a real icon image per item for recognized technology/service names — use this for actual named products like "Azure Data Factory", "Oracle Database", "Power BI"), "pills" (colored text-only badges, no icon — use for generic/unrecognized items), "flow" (left-to-right mini-flow with arrows — use for strategies/phases), "text" (default, dot-separated text)
-
-bottom_bands: 0-2 cross-cutting bands below the zones (governance, security, monitoring).
-  - color: which zone_theme color to use for the label
-
-journey_labels: 0-2 transformation journey spans shown as labeled brackets.
-  - from_zone_index / to_zone_index: 0-based zone indices
-
-DESIGN RULES:
-1. MAXIMUM 5 zones. More than 5 becomes unreadable on a single slide.
-2. MAXIMUM 5 groups per zone, MAXIMUM 5 items per group.
-3. Item labels MUST be 2-4 words max. No sentences, no descriptions. Just names.
-4. Group labels MUST be under 25 characters.
-5. Zone titles MUST be under 30 characters.
-6. Only include services/capabilities actually mentioned or clearly implied by the proposal. Never invent.
-7. Use "flow" style sparingly — only for strategy sequences (e.g. Rehost → Replatform → Refactor).
-8. Use "icons" style for technology/service listings — real product names render as actual icon images. Use "pills" only for generic items with no recognizable product icon.
-9. The outcome/value zone should be narrow (width_ratio 0.5-0.7) with high-level business outcomes.
-10. Assign colors that make architectural sense — don't repeat colors for adjacent zones.
-11. Bottom bands should only contain genuine cross-cutting concerns.
-12. Journey labels should highlight the 1-2 major transformation stories.
+{ARCHITECTURE_DIAGRAM_GUIDANCE}
 
 IMPORTANT:
-- Derive ALL content from the user's requirements and reference material.
-- Do NOT add services, tools, or capabilities not supported by the input.
-- Keep the diagram at PROPOSAL level — high-level groupings, not detailed service catalogs.
-- Return ONLY valid JSON. No markdown, no code fences, no explanation."""
+- Derive ALL content from the user's requirements and reference material — never invent services, tools, capabilities, CIDR ranges, or resource names not supported by the input.
+- This is a re-elaboration pass, not a first draft in a vacuum: when a current draft is provided, keep its overall intent (the same zones/purpose it was already trying to serve) but deepen it — don't discard a sound structure just to produce something different.
+- Return ONLY valid JSON (the diagram object itself). No markdown, no code fences, no explanation."""
 
 
 def generate_architecture_diagram(
@@ -145,3 +96,78 @@ def generate_architecture_diagram(
         text = "\n".join(lines)
 
     return json.loads(text)
+
+
+def _diagram_search_query(slide: dict, plan: dict) -> str:
+    """Build a retrieval query scoped to this one diagram — its own
+    title/zone titles plus the proposal's industry/objective — rather
+    than reusing the single generic query already used for the whole
+    plan, so this pass can pull material more specific to this diagram."""
+    diagram = slide.get("diagram", {})
+    parts = [slide.get("title", ""), diagram.get("title", "")]
+    parts += [z.get("title", "") for z in diagram.get("zones", [])]
+    parts += [plan.get("industry", ""), plan.get("objective", "")]
+    return " ".join(p for p in parts if p)
+
+
+def _proposal_context(plan: dict, slide: dict) -> str:
+    return (
+        f"Customer: {plan.get('customer', '')}\n"
+        f"Industry: {plan.get('industry', '')}\n"
+        f"Objective: {plan.get('objective', '')}\n"
+        f"This diagram's purpose within the proposal (as decided by the "
+        f"overall plan): \"{slide.get('title', '')}\""
+    )
+
+
+def elaborate_architecture_diagrams(plan: dict, top_k: int = 12) -> dict:
+    """Re-elaborate each migration_flow diagram in the plan's architecture
+    section with a dedicated, focused Claude call.
+
+    Mutates and returns `plan`. Never raises — any failure (missing API
+    key, malformed JSON response, retrieval error) is caught per-diagram
+    and leaves that slide's existing content exactly as the main planning
+    call produced it, so this pass can only improve a diagram, never
+    break the generation pipeline.
+    """
+    arch_section = plan.get("sections", {}).get("architecture", {})
+    slides = arch_section.get("slides", [])
+
+    for slide in slides:
+        if slide.get("layout") != "migration_flow" or not slide.get("diagram"):
+            continue
+
+        try:
+            from retrieval.search import search_for_proposal
+            query = _diagram_search_query(slide, plan)
+            refs = search_for_proposal(query, top_k=top_k) if query.strip() else {}
+            reference_content = refs.get("content_references", [])
+        except Exception as e:
+            print(f"[architecture_generator] Reference search failed for "
+                  f"'{slide.get('title', '')}' ({e}) — elaborating without it")
+            reference_content = []
+
+        current_diagram = slide["diagram"]
+        user_prompt = (
+            f"Re-elaborate the following architecture diagram with your full "
+            f"attention on this one diagram — it was drafted as one of many "
+            f"sections in a single larger proposal-generation pass and may be "
+            f"shallower than an enterprise-grade proposal needs.\n\n"
+            f"Current draft:\n{json.dumps(current_diagram, indent=2)}"
+        )
+
+        try:
+            elaborated = generate_architecture_diagram(
+                user_prompt,
+                reference_content=reference_content,
+                context=_proposal_context(plan, slide),
+            )
+            if elaborated.get("zones") or elaborated.get("layers"):
+                elaborated.setdefault("title", current_diagram.get("title", ""))
+                slide["diagram"] = elaborated
+        except Exception as e:
+            print(f"[architecture_generator] Elaboration failed for "
+                  f"'{slide.get('title', '')}' ({e}) — keeping original diagram")
+            continue
+
+    return plan

@@ -43,7 +43,7 @@ def get_client() -> anthropic.Anthropic:
     return _client
 
 
-SECTION_SCHEMA = """SECTION STRUCTURE — every key inside "sections" must use these EXACT field names, or the renderer will not find the content:
+_SECTION_SCHEMA_HEAD = """SECTION STRUCTURE — every key inside "sections" must use these EXACT field names, or the renderer will not find the content:
 
 "cover": {"title": "...", "subtitle": "one-line value proposition", "customer": "...", "date": "YYYY-MM-DD"}
 
@@ -82,8 +82,13 @@ Ground this in evidence relevant to THIS project, not generic consulting positio
   ]
 }
 Each stat must be a business or operational outcome the customer would actually care about (cost, speed, freshness, reliability, risk reduction) — not a technology characteristic restated as a metric (e.g. "100% Open Standard Data Format" describes a storage format, not an outcome; if a platform trait like that is worth mentioning, put it in prose on the architecture/technology slide instead of as a headline KPI here).
+"""
 
-"architecture": {
+# Shared between the main planning prompt (below) and the dedicated
+# per-diagram elaboration pass in generation/architecture_generator.py —
+# a single source of truth so the two prompts can't drift apart the way
+# the old standalone architecture_generator.py schema silently did.
+ARCHITECTURE_DIAGRAM_GUIDANCE = """"architecture": {
   "title": "Solution Architecture",
   "slides": [
     {
@@ -107,12 +112,19 @@ Each stat must be a business or operational outcome the customer would actually 
             "color": "orange|teal|blue|purple|green|dark",
             "width_ratio": 1.0,
             "groups": [
-              {"label": "Group Label (under 25 chars)", "items": ["Item 1", "Item 2"], "style": "icons|pills|flow|text"}
+              {"label": "Group Label (under 25 chars)", "items": [
+                "Item 1",
+                {"name": "Item 2", "qualifier": "short role/context, e.g. 'on-prem source extraction'"}
+              ], "style": "icons|pills|flow|text"}
             ]
           }
         ],
-        "bottom_bands": [{"label": "Band Label", "items": ["Cross-cutting item 1", "Item 2"], "color": "purple"}],
-        "journey_labels": [{"label": "Transformation Journey Name", "from_zone_index": 0, "to_zone_index": 2}]
+        "bottom_bands": [
+          {"label": "Governance", "items": ["Purview", "Data Catalog", "Compliance"], "color": "dark"},
+          {"label": "Platform & Security", "items": ["Entra ID", "Key Vault", "Azure Monitor", "Azure DevOps", "Cost Management"], "color": "dark"}
+        ],
+        "journey_labels": [{"label": "Transformation Journey Name", "from_zone_index": 0, "to_zone_index": 2}],
+        "legend": [{"symbol": "dashed|arrow|solid", "label": "What this notation means"}]
       }
     }
   ]
@@ -121,19 +133,22 @@ ARCHITECTURE IS MANDATORY. Always include at least one "architecture" or "migrat
 
 Two layout options for architecture content — pick based on what the proposal needs:
 - "architecture": simple stacked layers, top to bottom. Good for a single clean overview. 4-6 layers, 2-4 components each, colors from blue/teal/purple/green/orange.
-- "migration_flow": a left-to-right zone diagram (3-6 zones), each with 2-5 groups of 2-5 short items. Prefer it whenever the architecture is complex enough to benefit from a visual flow. zones: color one of orange (source/current-state), teal (migration/transformation), blue (target cloud), purple (data/analytics platform), green (outcomes/value), dark (governance) — don't repeat colors on adjacent zones. width_ratio: 1.0 standard, 0.5-0.7 for a narrow outcome zone (needs at least ~1.2 width_ratio-equivalent space for "pills" or "icons" styles to render — keep those groups in normal or wide zones, not the narrowest ones). groups: "style":"icons" for real, named technologies/products (this is the ONLY style that renders an actual icon image per item — use it for Azure/AWS/Fabric services, databases, and other recognized tools, e.g. "Azure Data Factory", "Oracle Database", "Power BI"); "pills" for short text badges with no icon (generic/non-recognized items); "flow" only for a strategy sequence (e.g. Rehost → Replatform → Refactor); "text" otherwise. Item labels: 2-4 words, no sentences. bottom_bands (at least 1 for the target-state diagram — see CROSS-CUTTING GOVERNANCE below; up to 2) for cross-cutting concerns (identity, RBAC, secrets, governance, monitoring). journey_labels (0-2) to call out the 1-2 major transformation stories.
+- "migration_flow": a left-to-right zone diagram (3-6 zones), each with 2-5 groups of 2-5 short items. Prefer it whenever the architecture is complex enough to benefit from a visual flow. zones: color one of orange (source/current-state), teal (migration/transformation), blue (target cloud), purple (data/analytics platform), green (outcomes/value), dark (governance) — don't repeat colors on adjacent zones. width_ratio: 1.0 standard, 0.5-0.7 for a narrow outcome zone (needs at least ~1.2 width_ratio-equivalent space for "pills" or "icons" styles to render — keep those groups in normal or wide zones, not the narrowest ones). groups: "style":"icons" for real, named technologies/products (this is the ONLY style that renders an actual icon image per item — use it for Azure/AWS/Fabric services, databases, and other recognized tools, e.g. "Azure Data Factory", "Oracle Database", "Power BI"); "pills" for short text badges with no icon (generic/non-recognized items); "flow" only for a strategy sequence (e.g. Rehost → Replatform → Refactor); "text" otherwise. Item labels: 2-4 words, no sentences — UNLESS the item genuinely needs a short qualifier for role/context (see TOOL-RESPONSIBILITY CLARITY below), in which case use the object form {"name", "qualifier"} instead of stretching the plain string into a sentence; it renders as "Name · qualifier", matching the two-tier labeling style Xebia's own enterprise-grade proposal decks actually use. Use it sparingly — most items should stay plain strings. bottom_bands (at least 1 for the target-state diagram — see CROSS-CUTTING GOVERNANCE below; up to 2) for cross-cutting concerns (identity, RBAC, secrets, governance, monitoring). journey_labels (0-2) to call out the 1-2 major transformation stories. legend (OPTIONAL, 0-3 entries): only add this when the diagram itself uses a "border_style":"dashed" zone/group or otherwise mixes notation that needs explaining — don't add a legend to every diagram by default (real reference decks only do this on their most detailed diagrams).
 
-For a data platform / migration proposal, generate 2-3 DISTINCT migration_flow diagrams that each earn their place — e.g. "Current-State Architecture" (today's fragmented/legacy setup), "Target Architecture" or "End-to-End Data Flow" (the proposed platform, source to consumption), and optionally a third focused view (e.g. medallion/lakehouse layers, or the analytics/consumption layer) — never repeat the same zones/content across multiple diagrams. For a smaller or simpler proposal, one "architecture" slide is enough — don't pad with diagrams that don't add information.
+NESTED LANDING-ZONE / NETWORK TOPOLOGY — a "migration_flow" zone can, instead of "groups", use "children" (a list of nested zone objects, same shape, recursively) to represent administrative/network containment — subscription containing a VNet containing the actual workloads — matching how Xebia's own regulated-industry/government reference decks (network topology, hub-spoke) actually draw this: {"id": "...", "title": "...", "color": "...", "width_ratio": 1.0, "boundary_type": "subscription", "children": [{"...VNet zone, itself with boundary_type: "vnet" and its own "children" or "groups"...}]}. "boundary_type" (one of "subscription", "vnet", "workspace", or omit/"none") marks a zone as a logical/administrative boundary rather than a deployed component — it automatically renders with a dashed border (never set "border_style" separately for this; boundary_type already drives it). A zone with "children" ignores "groups" (use one or the other, not both). Also available at the diagram level: "divider": {"position_after_zone": 0, "label": "On-prem | Azure"} draws a single dashed vertical divider line after the given top-level zone index — use this for an on-prem/cloud split that doesn't warrant its own zone boundary. USE THIS ARCHETYPE whenever the proposal involves a regulated industry, government/education client, or explicit network/security/landing-zone scope (hub-spoke topology, subnet segmentation, ExpressRoute/VPN connectivity) as its own dedicated diagram — don't fold subscription/VNet/subnet detail into the main data-flow diagram's groups, and don't invent CIDR ranges, specific IP addresses, or resource names not implied by the reference material; name real architectural decisions instead (e.g. "hub-spoke only, no spoke-to-spoke peering", "Private Endpoints, no public IP") the way the qualifier field or a group label would state them elsewhere. Most proposals don't need this archetype — only add it when network/security is genuinely part of the engagement's scope.
+
+For a data platform / migration proposal, generate 2-3 DISTINCT migration_flow diagrams that each earn their place — e.g. "Current-State Architecture" (today's fragmented/legacy setup), "Target Architecture" or "End-to-End Data Flow" (the proposed platform, source to consumption), and optionally a third focused view (e.g. medallion/lakehouse layers, the analytics/consumption layer, or a network/landing-zone topology when network/security is genuinely in scope — see NESTED LANDING-ZONE below) — never repeat the same zones/content across multiple diagrams. For a smaller or simpler proposal, one "architecture" slide is enough — don't pad with diagrams that don't add information.
 
 DEPTH REQUIREMENT — the target-state diagram (architecture or migration_flow, whichever is the main one) must be an executable enterprise architecture, not a shallow "Sources → Ingestion → Consumption" sketch. At minimum it must show, as distinct zones/layers (using the platform's real terminology, not necessarily these exact names): (1) a raw/bronze ingestion-landing layer, (2) a validated/standardized/silver layer, (3) a curated/business-ready/gold layer — don't collapse these three into one "storage" zone — (4) a named connectivity/ingestion mechanism appropriate to the source (e.g. self-hosted integration runtime for on-prem, CDC/incremental capture for near-real-time, ExpressRoute/VPN for network), and (5) a semantic/serving layer distinct from raw data consumption (e.g. semantic models, not just "reports read from the warehouse"). Skipping straight from source to a single "storage" zone to BI is too shallow for an enterprise proposal.
 
-CROSS-CUTTING GOVERNANCE — every architecture/migration_flow diagram in an enterprise-scale proposal (large team, regulated industry, or explicitly complex engagement) MUST include at least one bottom_band covering identity, access/RBAC, secrets management, data governance, and monitoring as named items (e.g. "Entra ID", "Key Vault", "Purview", "Azure Monitor") — not folded into a single generic "security" icon. Treat this as a required layer of the architecture, not decoration.
+CROSS-CUTTING GOVERNANCE — every architecture/migration_flow diagram in an enterprise-scale proposal (large team, regulated industry, or explicitly complex engagement) MUST include at least one bottom_band covering identity, access/RBAC, secrets management, data governance, and monitoring as named items (e.g. "Entra ID", "Key Vault", "Purview", "Azure Monitor") — not folded into a single generic "security" icon. Treat this as a required layer of the architecture, not decoration. Whenever you have enough named items to fill two meaningfully distinct bands (≥3 items each), split them into a "Governance" band (catalog, lineage, data quality, compliance — e.g. "Purview", "Data Catalog") and a separate "Platform & Security" band (identity, secrets, monitoring, DevOps, cost — e.g. "Entra ID", "Key Vault", "Azure Monitor", "Azure DevOps", "Cost Management"/"FinOps") — this is the pattern Xebia's own enterprise-grade reference decks use, and it reads as more deliberate than one merged band. A smaller/simpler proposal can stay with one combined band.
 
-TOOL-RESPONSIBILITY CLARITY — when two technologies could plausibly do the same job in this architecture (e.g. Azure Data Factory vs. Fabric Pipelines/Dataflows Gen2 for orchestration; Azure Blob Storage vs. OneLake for storage), don't list both in the same zone/group as if they're interchangeable or redundant — either (a) pick ONE as the primary pattern for that responsibility and don't include the other, or (b) if you genuinely need both, give each a distinct, named role via the group label or a short qualifier (e.g. group "Hybrid Connectivity" → "Azure Data Factory (on-prem source extraction)" is fine as one item's context, but don't put "Azure Data Factory" and "Fabric Data Factory Pipelines" side by side with no stated difference). Putting them in visually distinct groups with different group labels (e.g. "On-Prem Extraction" vs. "Cloud Orchestration") is not sufficient on its own — the role difference must also appear in the item text or a subtitle, since a reader scanning the diagram won't reliably infer it from group placement alone. The reader must never have to guess why both exist.
+TOOL-RESPONSIBILITY CLARITY — when two technologies could plausibly do the same job in this architecture (e.g. Azure Data Factory vs. Fabric Pipelines/Dataflows Gen2 for orchestration; Azure Blob Storage vs. OneLake for storage), don't list both in the same zone/group as if they're interchangeable or redundant — either (a) pick ONE as the primary pattern for that responsibility and don't include the other, or (b) if you genuinely need both, give each a distinct, named role using the item's "qualifier" field (e.g. {"name": "Azure Data Factory", "qualifier": "on-prem source extraction"} next to {"name": "Fabric Data Factory Pipelines", "qualifier": "in-Fabric orchestration"}). Putting them in visually distinct groups with different group labels (e.g. "On-Prem Extraction" vs. "Cloud Orchestration") is not sufficient on its own — the role difference must also appear in the item's qualifier, since a reader scanning the diagram won't reliably infer it from group placement alone. The reader must never have to guess why both exist.
 
-NEVER include both an "architecture" (pyramid layers) slide AND a "migration_flow" slide that describe the same breakdown (e.g. both walking through the identical Bronze/Silver/Gold medallion layers) — that reads as padding, not depth. If you use both layout types in one proposal, they must serve genuinely different purposes: e.g. the "architecture" slide is the single canonical layer reference (used once), while "migration_flow" diagrams are flow/lineage-oriented (source-to-consumption data movement) or show a distinct lifecycle view (current-state vs. target-state) — not a second rendering of the same layer list in a different shape.
+NEVER include both an "architecture" (pyramid layers) slide AND a "migration_flow" slide that describe the same breakdown (e.g. both walking through the identical Bronze/Silver/Gold medallion layers) — that reads as padding, not depth. If you use both layout types in one proposal, they must serve genuinely different purposes: e.g. the "architecture" slide is the single canonical layer reference (used once), while "migration_flow" diagrams are flow/lineage-oriented (source-to-consumption data movement) or show a distinct lifecycle view (current-state vs. target-state) — not a second rendering of the same layer list in a different shape."""
 
-OPTIONAL — options considered: when there are genuinely 2+ viable architectural approaches for this engagement and one was chosen (e.g. two different MDM strategies, two hosting models), add ONE extra slide inside the "architecture" section's "slides" array with "layout": "comparison_table", headers like ["Criteria", "Option 1: X", "Option 2: Y"], and rows comparing them on cost/complexity/timeline/fit — state which option is recommended in the surrounding text. Skip this entirely when there's only one sensible approach; don't manufacture a false choice.
+
+_SECTION_SCHEMA_TAIL = """OPTIONAL — options considered: when there are genuinely 2+ viable architectural approaches for this engagement and one was chosen (e.g. two different MDM strategies, two hosting models), add ONE extra slide inside the "architecture" section's "slides" array with "layout": "comparison_table", headers like ["Criteria", "Option 1: X", "Option 2: Y"], and rows comparing them on cost/complexity/timeline/fit — state which option is recommended in the surrounding text. Skip this entirely when there's only one sensible approach; don't manufacture a false choice.
 
 "technology_stack": {
   "title": "Technology Stack",
@@ -183,6 +198,8 @@ This renders as a real week-ruled Gantt chart (bars, not description cards) — 
   ]
 }
 If the solution involves meaningful reporting/analytics/BI modernization (e.g. Power BI semantic models, Direct Lake, dashboard migration) as a real part of the scope — not just a downstream consumer of the data platform — include a dedicated Power BI/Analytics role on the team; don't fold that work silently into a Data Engineer's expertise list when it's substantial enough to be its own workstream.
+
+NO INDIVIDUAL NAMES — if the user's request says not to name individual team members (e.g. "no names", "role only", "anonymize the team", "don't invent people"), set every member's "name" to JSON null instead of inventing one — never fabricate a person's name to satisfy this schema's shape when the user explicitly asked you not to. The "role" and "expertise" fields are still required either way.
 
 "commercials": {
   "title": "Investment Summary",
@@ -300,7 +317,7 @@ AVAILABLE SLIDE LAYOUTS (choose the best one for each piece of content):
 - "stats_highlight": large KPI numbers. For impact metrics. Needs "stats": [{"value", "label"}].
 - "key_value": left-right pairs. For project details, case studies. Needs "pairs": [{"key", "value"}].
 - "architecture": multi-layer diagram with component boxes. For solution architecture. Needs "layers": [{"name", "components", "color"}].
-- "migration_flow": left-to-right multi-zone architecture diagram with real technology icons. For richer/multiple architecture views. Needs "diagram": {"title", "zones": [...], "bottom_bands", "journey_labels"} — see the architecture section schema above for the full shape.
+- "migration_flow": left-to-right multi-zone architecture diagram with real technology icons. For richer/multiple architecture views. Needs "diagram": {"title", "zones": [...], "bottom_bands", "journey_labels", "legend" (optional)} — see the architecture section schema above for the full shape.
 - "technology": tech cards with categories. For tech stack. Needs "technologies": [{"name", "category", "description"}].
 - "challenges": 3-column challenge/impact/solution. For risks, challenges. Needs "challenges": [{"challenge", "impact", "solution"}].
 - "timeline": phase bars (timeline sections only). Needs "phases".
@@ -320,6 +337,9 @@ USER-UPLOADED IMAGES:
 Some images attached to this message are user uploads meant to be embedded in the final deck (marked "embed" below), as opposed to images provided only as style/architecture reference (marked "reference"). For every "embed" image, look at it, decide which single section/slide it belongs on and where, and add an entry to "image_placements":
 {"image_id": "<the id given for that image>", "section": "<storyline key, e.g. architecture>", "slide_index": 0, "position": "right|left|full", "caption": "short caption describing the image"}
 slide_index is the 0-based index into that section's "slides" array (0 if the section has no "slides" array). Only place an image where it is actually relevant to the content on that slide — never place it arbitrarily."""
+
+SECTION_SCHEMA = (_SECTION_SCHEMA_HEAD + "\n\n" + ARCHITECTURE_DIAGRAM_GUIDANCE
+                  + "\n\n" + _SECTION_SCHEMA_TAIL)
 
 
 SYSTEM_PROMPT = f"""You are Xebia Proposal Studio, an AI assistant that creates premium, enterprise-grade proposals for Xebia, a global IT consultancy.

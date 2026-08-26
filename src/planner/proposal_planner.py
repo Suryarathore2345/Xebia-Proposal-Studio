@@ -1,5 +1,6 @@
 """Proposal planner — orchestrates chat, LLM, search, and generation."""
 
+import re
 import sys
 import uuid
 from pathlib import Path
@@ -13,6 +14,39 @@ from generation.pptx_generator import generate_proposal_pptx
 from generation.docx_generator import generate_proposal_docx
 
 MIN_SECTIONS_FOR_TOC = 10
+
+_ANONYMIZE_TEAM_PATTERN = re.compile(
+    r"no\s+(?:individual\s+|invented\s+|team[\s-]?member\s+)*names?\b"
+    r"|without\s+(?:individual\s+)?names?\b"
+    r"|role[\s-]only\b"
+    r"|anonymiz\w*\b"
+    r"|never\s+by\s+named\s+person\b",
+    re.IGNORECASE,
+)
+
+
+def _wants_anonymous_team(history: list[dict]) -> bool:
+    """True if any user message in this conversation asked to omit
+    individual team-member names. Checked independently of whether the
+    planning LLM actually complied with an inline instruction to that
+    effect — verified during testing that a chat-message instruction
+    alone gets overridden by the schema's own "realistic name" example,
+    so this makes the omission deterministic instead of hopeful."""
+    for msg in history:
+        if msg.get("role") == "user" and _ANONYMIZE_TEAM_PATTERN.search(msg.get("content", "")):
+            return True
+    return False
+
+
+def _strip_team_names(plan: dict) -> dict:
+    """Null out every team member's name — the deterministic guarantee
+    behind _wants_anonymous_team, applied regardless of what the LLM
+    actually returned."""
+    members = plan.get("sections", {}).get("team_structure", {}).get("members", [])
+    for m in members:
+        if isinstance(m, dict):
+            m["name"] = None
+    return plan
 
 
 def _ensure_table_of_contents(plan: dict) -> dict:
@@ -97,6 +131,21 @@ class ProposalSession:
                 print(f"[ProposalSession] Review pass failed ({e}), using unreviewed plan")
 
             result = _ensure_table_of_contents(result)
+
+            if _wants_anonymous_team(self.history):
+                result = _strip_team_names(result)
+
+            try:
+                from generation.architecture_generator import elaborate_architecture_diagrams
+                result = elaborate_architecture_diagrams(result)
+            except Exception as e:
+                # Belt-and-suspenders: elaborate_architecture_diagrams already
+                # catches per-diagram failures internally and never raises,
+                # but if something upstream of that (e.g. the import itself)
+                # goes wrong, the plan must still ship with whatever
+                # architecture content the main planning call produced.
+                print(f"[ProposalSession] Architecture elaboration pass failed ({e}), using plan as-is")
+
             self.plan = result
             self.status = "plan_ready"
             self.history.append({

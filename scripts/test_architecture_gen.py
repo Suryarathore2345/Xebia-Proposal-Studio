@@ -88,7 +88,10 @@ STATIC_DIAGRAM = {
             "width_ratio": 1.1,
             "groups": [
                 {"label": "Data Integration", "items": ["Data Factory", "OneLake", "Lakehouse"], "style": "icons"},
-                {"label": "Analytics & Processing", "items": ["Data Warehouse", "Notebooks", "Spark"], "style": "icons"},
+                {"label": "Analytics & Processing", "items": [
+                    {"name": "Data Warehouse", "qualifier": "Bronze/Silver/Gold medallion"},
+                    "Notebooks", "Spark",
+                ], "style": "icons"},
                 {"label": "Business Intelligence", "items": ["Semantic Models", "Power BI", "Real-Time Intel"], "style": "icons"},
             ],
         },
@@ -105,14 +108,116 @@ STATIC_DIAGRAM = {
     ],
     "bottom_bands": [
         {
-            "label": "Security & Governance",
-            "items": ["Identity Management", "Compliance", "Encryption", "Monitoring", "Cost Management"],
+            "label": "Governance",
+            "items": ["Purview", "Data Catalog", "Compliance"],
+            "color": "dark",
+        },
+        {
+            "label": "Platform & Security",
+            "items": ["Entra ID", "Key Vault", "Azure Monitor", "Azure DevOps", "Cost Management"],
             "color": "dark",
         },
     ],
     "journey_labels": [
         {"label": "Cloud Transformation", "from_zone_index": 0, "to_zone_index": 2},
         {"label": "Data & Analytics Transformation", "from_zone_index": 2, "to_zone_index": 4},
+    ],
+    "legend": [
+        {"symbol": "dashed", "label": "Subscription boundary"},
+        {"symbol": "arrow", "label": "Data flow"},
+    ],
+}
+
+
+# Landing-zone / hub-spoke archetype fixture — exercises the nested
+# boundary_type/children/divider schema (Phase 3), which the AWS→Fabric
+# STATIC_DIAGRAM above deliberately does not use. Modeled on the pattern
+# found in MOHESR slide 15 / PNB MetLife slide 19: on-prem sources,
+# separated by a dashed divider from an Azure subscription boundary that
+# contains nested VNet boundaries, each containing the actual workloads.
+LANDING_ZONE_DIAGRAM = {
+    "title": "Reference Azure Landing Zone Architecture",
+    "zones": [
+        {
+            "id": "onprem",
+            "title": "On-Premises",
+            "color": "orange",
+            "width_ratio": 0.55,
+            "groups": [
+                {"label": "Source Systems", "items": ["SQL Server", "SAP ECC"], "style": "icons"},
+            ],
+        },
+        {
+            "id": "azure_landing_zone",
+            "title": "Azure Subscription — Enterprise-Scale Landing Zone",
+            "color": "blue",
+            "width_ratio": 2.4,
+            "boundary_type": "subscription",
+            "children": [
+                {
+                    "id": "connectivity_sub",
+                    "title": "Connectivity",
+                    "color": "blue",
+                    "width_ratio": 1.0,
+                    "boundary_type": "vnet",
+                    "children": [
+                        {
+                            "id": "hub_vnet",
+                            "title": "Hub VNet",
+                            "color": "blue",
+                            "width_ratio": 1.0,
+                            "groups": [
+                                {"label": "Shared Services", "items": ["Azure Firewall", "VPN Gateway", "Bastion"], "style": "icons"},
+                            ],
+                        },
+                    ],
+                },
+                {
+                    "id": "identity_sub",
+                    "title": "Identity",
+                    "color": "blue",
+                    "width_ratio": 0.8,
+                    "groups": [
+                        {"label": "Identity", "items": ["Entra ID", "Domain Controllers"], "style": "icons"},
+                    ],
+                },
+                {
+                    "id": "landing_zone_sub",
+                    "title": "Landing Zone",
+                    "color": "purple",
+                    "width_ratio": 1.3,
+                    "boundary_type": "vnet",
+                    "children": [
+                        {
+                            "id": "workload_vnet",
+                            "title": "Workload VNet",
+                            "color": "purple",
+                            "width_ratio": 1.0,
+                            "groups": [
+                                {"label": "Workloads", "items": ["Azure Databricks", "ADLS Gen2", "AKS"], "style": "icons"},
+                            ],
+                        },
+                    ],
+                },
+            ],
+        },
+        {
+            "id": "consumption",
+            "title": "Consumption",
+            "color": "green",
+            "width_ratio": 0.55,
+            "groups": [
+                {"label": "BI", "items": ["Power BI"], "style": "icons"},
+            ],
+        },
+    ],
+    "bottom_bands": [
+        {"label": "Governance", "items": ["Purview", "Azure Policy"], "color": "dark"},
+    ],
+    "divider": {"position_after_zone": 0, "label": "On-prem | Azure"},
+    "legend": [
+        {"symbol": "dashed", "label": "Subscription/VNet boundary"},
+        {"symbol": "arrow", "label": "Data flow"},
     ],
 }
 
@@ -148,6 +253,11 @@ def run_static():
     return STATIC_DIAGRAM
 
 
+def run_landing_zone():
+    print("Using static landing-zone diagram data (no LLM call)...")
+    return LANDING_ZONE_DIAGRAM
+
+
 def run_ai():
     print("Generating architecture diagram via Claude...")
     from generation.architecture_generator import generate_architecture_diagram
@@ -179,9 +289,14 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--static", action="store_true",
                         help="Use hardcoded data instead of calling Claude")
+    parser.add_argument("--landing-zone", action="store_true",
+                        help="Use the static nested landing-zone/hub-spoke fixture")
     args = parser.parse_args()
 
-    if args.static:
+    if args.landing_zone:
+        diagram = run_landing_zone()
+        path = render_pptx(diagram, "_landing_zone")
+    elif args.static:
         diagram = run_static()
         path = render_pptx(diagram, "_static")
     else:

@@ -31,6 +31,44 @@ def _brand_purple() -> RGBColor:
     return _rgb(colors()["primary"]["purple"])
 
 
+def _diagram_zone_summary(zone: dict) -> str:
+    """Prose summary of one zone's content, for the docx architecture
+    bullet list. Mirrors migration_flow_renderer._draw_zone's rule that a
+    zone with "children" (nested boundary zones — subscription > VNet >
+    workload) ignores "groups" and recurses instead — without this, a
+    landing-zone diagram rendered as an empty bullet in the Word output
+    (title with nothing after the colon), since "groups" is simply absent
+    on a zone that uses "children"."""
+    children = zone.get("children")
+    if children:
+        parts = []
+        for child in children:
+            summary = _diagram_zone_summary(child)
+            title = child.get("title", "")
+            parts.append(f"{title} ({summary})" if summary else title)
+        return "; ".join(parts)
+
+    group_texts = []
+    for group in zone.get("groups", []):
+        items = ", ".join(_diagram_item_label(i) for i in group.get("items", []))
+        label = group.get("label", "")
+        group_texts.append(f"{label} ({items})" if label else items)
+    return "; ".join(group_texts)
+
+
+def _diagram_item_label(item) -> str:
+    """Architecture-diagram group/band items are plain strings or
+    {"name", "qualifier"} objects (see migration_flow_renderer._item_label
+    for the PPTX-side equivalent) — render qualifier objects as
+    "Name (qualifier)" in prose since the docx output has no visual
+    "Name · qualifier" convention of its own."""
+    if isinstance(item, dict):
+        name = item.get("name", "")
+        qualifier = item.get("qualifier", "")
+        return f"{name} ({qualifier})" if qualifier else name
+    return str(item)
+
+
 class ProposalDOCXGenerator:
     """Generates a complete Xebia-branded DOCX from a proposal plan."""
 
@@ -311,20 +349,26 @@ class ProposalDOCXGenerator:
         if not members:
             return
 
-        table = self.doc.add_table(rows=len(members) + 1, cols=3)
+        # A member's "name" is null when the user asked not to invent
+        # individual people — drop the Name column entirely rather than
+        # rendering a table with a blank first column.
+        has_names = any(m.get("name") for m in members if isinstance(m, dict))
+        headers = ["Name", "Role", "Expertise"] if has_names else ["Role", "Expertise"]
+
+        table = self.doc.add_table(rows=len(members) + 1, cols=len(headers))
         table.alignment = WD_TABLE_ALIGNMENT.CENTER
         table.style = "Table Grid"
 
-        headers = ["Name", "Role", "Expertise"]
         for i, header in enumerate(headers):
             cell = table.rows[0].cells[i]
             cell.text = header
             self._style_table_header_cell(cell)
 
         for r_idx, member in enumerate(members):
-            table.rows[r_idx + 1].cells[0].text = member.get("name", "")
-            table.rows[r_idx + 1].cells[1].text = member.get("role", "")
-            table.rows[r_idx + 1].cells[2].text = member.get("expertise", "")
+            values = ([member.get("name", "")] if has_names else []) + [
+                member.get("role", ""), member.get("expertise", "")]
+            for c_idx, value in enumerate(values):
+                table.rows[r_idx + 1].cells[c_idx].text = value
 
             if r_idx % 2 == 1:
                 for cell in table.rows[r_idx + 1].cells:
@@ -481,17 +525,15 @@ class ProposalDOCXGenerator:
                 p = self.doc.add_paragraph(style="List Bullet")
                 run = p.add_run(f"{zone.get('title', '')}: ")
                 run.font.bold = True
-                group_texts = []
-                for group in zone.get("groups", []):
-                    items = ", ".join(group.get("items", []))
-                    label = group.get("label", "")
-                    group_texts.append(f"{label} ({items})" if label else items)
-                p.add_run("; ".join(group_texts))
+                p.add_run(_diagram_zone_summary(zone))
+            divider = diagram.get("divider")
+            if divider and divider.get("label"):
+                self.doc.add_paragraph(divider["label"], style="List Bullet")
             for band in diagram.get("bottom_bands", []):
                 p = self.doc.add_paragraph(style="List Bullet")
                 run = p.add_run(f"{band.get('label', '')}: ")
                 run.font.bold = True
-                p.add_run(", ".join(band.get("items", [])))
+                p.add_run(", ".join(_diagram_item_label(i) for i in band.get("items", [])))
 
         if data.get("technologies"):
             table = self.doc.add_table(rows=len(data["technologies"]) + 1, cols=3)

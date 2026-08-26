@@ -15,9 +15,9 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from pptx import Presentation
-from pptx.util import Inches, Pt
+from pptx.util import Inches, Pt, Emu
 from pptx.enum.shapes import MSO_SHAPE
-from pptx.enum.text import PP_ALIGN
+from pptx.enum.text import PP_ALIGN, MSO_AUTO_SIZE
 from pptx.dml.color import RGBColor
 
 from generation.design_generator import SlideStyle, ProposalDesignSystem
@@ -79,6 +79,32 @@ def _distribute_rows(n: int, min_h: float, max_h: float, gap: float,
     block_h = n * row_h + (n - 1) * gap
     start_y = zone_top + max(0.0, (zone_h - block_h) / 2)
     return row_h, start_y
+
+
+def _safe_title_bottom(slide, fallback: float = 1.4) -> float:
+    """Bottom edge of this slide's own title placeholder — read directly
+    rather than assumed, since it varies by template (e.g. xebia_carrington
+    bottoms out around 1.4in, xebia_retail/xebia_retail_cases/xebia_synapse
+    extend to ~1.84in). A hardcoded content-start offset calibrated against
+    one template silently collides with the title on the others."""
+    try:
+        title_ph = slide.placeholders[0]
+        return Emu(title_ph.top).inches + Emu(title_ph.height).inches
+    except Exception:
+        return fallback
+
+
+def _est_wrapped_lines(text: str, font_pt: float, box_w_in: float) -> int:
+    """How many wrapped lines `text` needs at `font_pt` in a box
+    `box_w_in` wide — an estimate (no real text-layout engine available),
+    but the same formula already validated against real overflow cases
+    during the visual-QA audit."""
+    if not text or box_w_in <= 0.05:
+        return 1
+    avg_char_w_in = font_pt * 0.0072
+    chars_per_line = max(1, box_w_in / avg_char_w_in)
+    return max(1, -(-len(text) // int(chars_per_line)))
+
 
 # Font sizes — constrained by slide geometry to prevent overflow.
 SZ_HERO = 32
@@ -218,12 +244,17 @@ def _layout_has_static_heading(slide, expected_text: str) -> bool:
 
 def _fill_ph(slide, idx: int, text: str, size: float = None,
              color: str = None, bold: bool = None, alignment=None,
-             font_name: str = "Arial"):
+             font_name: str = "Arial", autosize: bool = False):
     ph = _get_ph(slide, idx)
     if ph is None:
         return None
     tf = ph.text_frame
     tf.word_wrap = True
+    if autosize:
+        # Only for layouts whose title can be long AI-generated text
+        # (migration_flow, architecture) — everything else keeps the
+        # default (no shrink) so short titles render exactly as before.
+        tf.auto_size = MSO_AUTO_SIZE.TEXT_TO_FIT_SHAPE
     p = tf.paragraphs[0]
     p.text = str(text)
     if size:
@@ -740,13 +771,32 @@ def build_icon_grid_slide(prs: Presentation, style: SlideStyle, title: str,
                      initial, 14, style.palette.text_light, bold=True,
                      alignment=PP_ALIGN.CENTER, font_name=style.heading_font)
 
-        _add_textbox(slide, x + 0.75, y + 0.22, card_w - 0.95, 0.35,
-                     item.get("label", ""), SZ_SUBTITLE, style.title_color,
+        # Title height grows with wrapped-line count instead of a flat
+        # 0.35in — a long card title (e.g. "Healthcare & Regulated Sector
+        # Focus") at 14pt in this width reliably needs 2 lines, and a
+        # fixed single-line box let it bleed into the description below.
+        label_text = item.get("label", "")
+        title_w = card_w - 0.95
+        # PowerPoint's default textbox left/right insets (0.1in each)
+        # eat into usable width — account for them so borderline titles
+        # near the 1-vs-2-line threshold aren't underestimated.
+        title_lines = _est_wrapped_lines(label_text, SZ_SUBTITLE, title_w - 0.2)
+        line_h = SZ_SUBTITLE * 1.22 / 72
+        title_h = max(0.35, title_lines * line_h + 0.06)
+        _add_textbox(slide, x + 0.75, y + 0.22, title_w, title_h,
+                     label_text, SZ_SUBTITLE, style.title_color,
                      bold=True, font_name=style.heading_font)
 
         desc = item.get("description", "")
         if desc:
-            _add_textbox(slide, x + 0.2, y + 0.75, card_w - 0.4, card_h - 0.95,
+            # 0.18 reproduces the old fixed gap exactly when title_h is at
+            # its 1-line floor (0.35): old code always started the
+            # description at y+0.75, i.e. 0.75-0.22-0.35=0.18 past the
+            # title box's bottom edge — so a short (1-line) title renders
+            # byte-for-byte where it did before this change.
+            desc_y = y + 0.22 + title_h + 0.18
+            desc_h = max(0.3, (y + card_h) - desc_y - 0.15)
+            _add_textbox(slide, x + 0.2, desc_y, card_w - 0.4, desc_h,
                          desc, SZ_SMALL, style.body_color, font_name=style.body_font)
 
 
@@ -799,13 +849,19 @@ def build_process_flow_slide(prs: Presentation, style: SlideStyle, title: str,
         # leading "1. "/"1) " the LLM sometimes repeats in the label itself,
         # so the number doesn't show twice.
         label = re.sub(r"^\d+[.)]\s*", "", step.get("label", ""))
-        _add_textbox(slide, x + 0.1, card_top + 0.15, step_w - 0.2, 0.40,
+        label_w = step_w - 0.2
+        label_lines = _est_wrapped_lines(label, 11, label_w - 0.2)
+        label_h = max(0.40, label_lines * (11 * 1.22 / 72) + 0.06)
+        _add_textbox(slide, x + 0.1, card_top + 0.15, label_w, label_h,
                      label, 11, style.title_color, bold=True,
                      alignment=PP_ALIGN.CENTER, font_name=style.heading_font)
 
         desc = step.get("description", "")
         if desc:
-            _add_textbox(slide, x + 0.1, card_top + 0.60, step_w - 0.2, card_h - 0.80,
+            extra = label_h - 0.40
+            desc_y = card_top + 0.60 + extra
+            desc_h = max(0.3, card_h - 0.80 - extra)
+            _add_textbox(slide, x + 0.1, desc_y, step_w - 0.2, desc_h,
                          desc, SZ_SMALL, style.body_color,
                          alignment=PP_ALIGN.CENTER, font_name=style.body_font)
 
@@ -917,13 +973,24 @@ def build_stats_highlight_slide(prs: Presentation, style: SlideStyle, title: str
                      value_text, value_size, color,
                      bold=True, alignment=PP_ALIGN.CENTER, font_name=style.heading_font)
 
-        _add_textbox(slide, x + 0.1, card_y + 1.85, card_w - 0.2, 0.40,
-                     stat.get("label", ""), 13, style.title_color,
+        # Label height grows with wrapped-line count instead of a flat
+        # 0.40in — a long KPI label (e.g. "Target Data Freshness for
+        # Priority Store Inventory Feeds") at 13pt reliably needs 2 lines
+        # and a fixed single-line box let it bleed into the sublabel below.
+        label_text = stat.get("label", "")
+        label_w = card_w - 0.2
+        label_lines = _est_wrapped_lines(label_text, 13, label_w - 0.2)
+        label_h = max(0.40, label_lines * (13 * 1.22 / 72) + 0.06)
+        _add_textbox(slide, x + 0.1, card_y + 1.85, label_w, label_h,
+                     label_text, 13, style.title_color,
                      bold=True, alignment=PP_ALIGN.CENTER, font_name=style.heading_font)
 
         sublabel = stat.get("description", "")
         if sublabel:
-            _add_textbox(slide, x + 0.1, card_y + 2.30, card_w - 0.2, 1.2,
+            extra = label_h - 0.40
+            sub_y = card_y + 2.30 + extra
+            sub_h = max(0.3, 1.2 - extra)
+            _add_textbox(slide, x + 0.1, sub_y, card_w - 0.2, sub_h,
                          sublabel, SZ_SMALL, style.body_color,
                          alignment=PP_ALIGN.CENTER, font_name=style.body_font)
 
@@ -1023,12 +1090,22 @@ def build_timeline_slide(prs: Presentation, style: SlideStyle, title: str,
     chart_w = CONTENT_R - chart_x
     week_col_w = chart_w / total_weeks
 
-    _add_textbox(slide, CONTENT_L, CONTENT_TOP - 0.35, CONTENT_W, 0.30,
+    # banner_y defaults to the old fixed CONTENT_TOP-0.35 position, but
+    # never sits above the slide's actual title bottom — on templates
+    # with a taller title placeholder (xebia_retail/xebia_retail_cases/
+    # xebia_synapse run to ~1.84in vs xebia_carrington's ~1.4in) the old
+    # fixed offset put this banner directly inside the title's own box
+    # (confirmed: 63% overlap on a real generated deck).
+    banner_y = max(CONTENT_TOP - 0.35, _safe_title_bottom(slide) + 0.05)
+    _add_textbox(slide, CONTENT_L, banner_y, CONTENT_W, 0.30,
                  f"TOTAL PROJECT TIMELINE: {total_weeks} WEEKS", SZ_SMALL,
                  style.accent_color, bold=True, alignment=PP_ALIGN.CENTER,
                  font_name=style.heading_font)
 
-    header_y = CONTENT_TOP + 0.05
+    # 0.40 reproduces the old fixed gap (old header_y - old banner_y =
+    # (CONTENT_TOP+0.05) - (CONTENT_TOP-0.35) = 0.40) so the header stays
+    # exactly where it was whenever banner_y is at its default.
+    header_y = banner_y + 0.40
     header_h = 0.30
     n = len(normalized)
     row_h, rows_start_y = _distribute_rows(
@@ -1110,23 +1187,37 @@ def build_team_slide(prs: Presentation, style: SlideStyle, title: str,
                    x + (card_w - avatar_size) / 2, y + 0.18,
                    avatar_size, avatar_size, fill_color=color)
 
-        name = member.get("name", "TBD")
-        initials = "".join(w[0].upper() for w in name.split()[:2] if w)
+        # A member's "name" is intentionally null when the user asked not
+        # to invent individual people (see _strip_team_names) — fall back
+        # to the role as the headline and derive avatar initials from it
+        # instead of showing a blank name or a "TBD" placeholder.
+        name = member.get("name") or ""
+        role = member.get("role", "")
+        headline = name or role
+        initials = "".join(w[0].upper() for w in headline.split()[:2] if w)
         _add_textbox(slide, x + (card_w - avatar_size) / 2, y + 0.24,
                      avatar_size, avatar_size - 0.12,
                      initials, 13, style.palette.text_light, bold=True,
                      alignment=PP_ALIGN.CENTER, font_name=style.heading_font)
 
         _add_textbox(slide, x + 0.1, y + 0.78, card_w - 0.2, 0.30,
-                     name, 11, style.title_color, bold=True,
+                     headline, 11, style.title_color, bold=True,
                      alignment=PP_ALIGN.CENTER, font_name=style.heading_font)
-        _add_textbox(slide, x + 0.1, y + 1.08, card_w - 0.2, 0.25,
-                     member.get("role", ""), SZ_SMALL, style.accent_color,
-                     alignment=PP_ALIGN.CENTER, font_name=style.body_font)
+
+        if name:
+            _add_textbox(slide, x + 0.1, y + 1.08, card_w - 0.2, 0.25,
+                         role, SZ_SMALL, style.accent_color,
+                         alignment=PP_ALIGN.CENTER, font_name=style.body_font)
+            expertise_y = y + 1.33
+        else:
+            # role is already the headline — don't repeat it on its own
+            # line, just reclaim that space for expertise.
+            expertise_y = y + 1.08
 
         expertise = member.get("expertise", "")
         if expertise:
-            _add_textbox(slide, x + 0.1, y + 1.33, card_w - 0.2, card_h - 1.50,
+            _add_textbox(slide, x + 0.1, expertise_y, card_w - 0.2,
+                         card_h - (expertise_y - y) - 0.15,
                          expertise, SZ_TINY, style.body_color,
                          alignment=PP_ALIGN.CENTER, font_name=style.body_font)
 
@@ -1204,15 +1295,25 @@ def build_commercials_slide(prs: Presentation, style: SlideStyle, title: str,
 
     if assumptions:
         assume_x = CONTENT_L + 8.5
+        assume_w = 3.2
         _add_textbox(slide, assume_x, CONTENT_TOP + 0.1, 3.5, 0.35,
                      "Assumptions", 13, style.accent_color, bold=True,
                      font_name=style.heading_font)
-        for i, assumption in enumerate(assumptions[:6]):
-            y = CONTENT_TOP + 0.55 + i * 0.48
+        # Rows stack with a fixed 0.48in stride, which only leaves 0.06in
+        # of buffer past a 0.42in-tall box — a long assumption (e.g. "This
+        # total represents Xebia professional services investment only —
+        # excludes...") wraps to 2 lines and bleeds into the next row.
+        # Track cumulative y from each row's actual height instead of a
+        # flat i*0.48, so a long row pushes only the rows after it down.
+        y = CONTENT_TOP + 0.55
+        for assumption in assumptions[:6]:
+            lines = _est_wrapped_lines(assumption, SZ_TINY, assume_w - 0.2)
+            item_h = max(0.42, lines * (SZ_TINY * 1.22 / 72) + 0.10)
             _add_shape(slide, MSO_SHAPE.OVAL,
                        assume_x, y + 0.05, 0.10, 0.10, fill_color=style.accent_color)
-            _add_textbox(slide, assume_x + 0.20, y, 3.2, 0.42,
+            _add_textbox(slide, assume_x + 0.20, y, assume_w, item_h,
                          assumption, SZ_TINY, style.body_color, font_name=style.body_font)
+            y += item_h + 0.06
 
 
 _LOGO_DIR = Path(__file__).resolve().parent.parent.parent / "xebia_design_system" / "assets" / "logos"
@@ -1273,7 +1374,7 @@ def build_architecture_slide(prs: Presentation, style: SlideStyle, title: str,
     slide = _add_slide(prs, "Content_Basic")
     _apply_composition(slide, style)
     _fill_ph(slide, 0, title, size=SZ_TITLE, color=style.title_color,
-             bold=True, font_name=style.heading_font)
+             bold=True, font_name=style.heading_font, autosize=True)
     _clear_body_ph(slide)
 
     if not layers:
@@ -1490,24 +1591,34 @@ _MAP_PX_W, _MAP_PX_H = 1532, 634
 _MAP_LON_A, _MAP_LON_B = 5.15818, 706.866   # px_x = A * lon + B
 _MAP_LAT_A, _MAP_LAT_B = -5.76466, 358.188  # px_y = A * lat + B
 
-# (country, lon, lat, label offset direction as (dx, dy) in inches)
+# (country, lon, lat, representative city — Xebia's own real office
+# locations, per its Technical Proposal for PNB MetLife's "Our Global
+# Presence" slide — label offset (dx, dy) in inches)
+#
+# The six Western/Central Europe hubs (UK, Netherlands, Belgium, Germany,
+# Switzerland, Poland) sit within a ~0.6 x 0.15in cluster on the rendered
+# map — Western Europe is just geographically small at this map scale —
+# so their offsets (and Spain's, close enough to interact with Belgium's)
+# were solved computationally for zero label overlap, verified with the
+# same geometry the renderer itself uses (see docs/operations/
+# deck-visual-layout-qa-plan.md, Finding 5).
 _GLOBAL_HUBS = [
-    ("USA", -122.33, 47.61, (-0.75, -0.05)),
-    ("Canada", -79.38, 43.65, (0.15, -0.30)),
-    ("Colombia", -74.07, 4.71, (0.20, 0.10)),
-    ("Spain", -6.20, 36.46, (-0.55, 0.10)),
-    ("UK", -0.13, 51.51, (-0.60, -0.05)),
-    ("Netherlands", 5.18, 52.22, (-0.20, -0.35)),
-    ("Belgium", 4.40, 51.22, (-0.75, 0.10)),
-    ("Germany", 8.68, 50.11, (0.15, -0.20)),
-    ("Switzerland", 8.54, 47.37, (0.45, 0.30)),
-    ("Poland", 21.01, 52.23, (0.20, -0.30)),
-    ("Saudi Arabia", 46.68, 24.71, (-0.55, 0.15)),
-    ("UAE", 55.27, 25.20, (0.40, 0.35)),
-    ("India", 77.03, 28.46, (0.20, -0.35)),
-    ("Singapore", 103.82, 1.35, (0.20, 0.15)),
-    ("Vietnam", 106.63, 10.82, (0.20, -0.20)),
-    ("Australia", 144.96, -37.81, (0.20, 0.15)),
+    ("USA", -122.33, 47.61, "Seattle", (-0.85, -0.10)),
+    ("Canada", -79.38, 43.65, "Toronto", (0.15, -0.35)),
+    ("Colombia", -74.07, 4.71, "Bogota", (0.20, 0.10)),
+    ("Spain", -6.20, 36.46, "San Fernando", (-0.95, 0.10)),
+    ("UK", -0.13, 51.51, "London", (-1.10, -0.25)),
+    ("Netherlands", 5.18, 52.22, "Amsterdam", (-0.05, 0.55)),
+    ("Belgium", 4.40, 51.22, "Antwerp", (-1.40, 0.15)),
+    ("Germany", 8.68, 50.11, "Frankfurt", (0.50, 0.15)),
+    ("Switzerland", 8.54, 47.37, "Zurich", (0.80, 0.55)),
+    ("Poland", 21.01, 52.23, "Warsaw", (1.30, -0.15)),
+    ("Saudi Arabia", 46.68, 24.71, "Riyadh", (-0.65, 0.20)),
+    ("UAE", 55.27, 25.20, "Dubai", (0.45, 0.40)),
+    ("India", 77.03, 28.46, "Bangalore", (0.30, -0.45)),
+    ("Singapore", 103.82, 1.35, "Singapore", (0.30, 0.20)),
+    ("Vietnam", 106.63, 10.82, "Ho Chi Minh City", (0.30, -0.25)),
+    ("Australia", 144.96, -37.81, "Melbourne", (0.30, 0.05)),
 ]
 
 
@@ -1528,16 +1639,27 @@ def build_global_presence_slide(prs: Presentation, style: SlideStyle,
         slide.shapes.add_picture(str(_MAP_ASSET), Inches(map_x), Inches(map_top),
                                   width=Inches(map_w), height=Inches(map_h))
 
-        for name, lon, lat, (dx, dy) in _GLOBAL_HUBS:
+        for name, lon, lat, city, (dx, dy) in _GLOBAL_HUBS:
             px = _MAP_LON_A * lon + _MAP_LON_B
             py = _MAP_LAT_A * lat + _MAP_LAT_B
             dot_x = map_x + (px / _MAP_PX_W) * map_w
             dot_y = map_top + (py / _MAP_PX_H) * map_h
-            label_w = 1.1
+            # Width scales with the longer of the two lines instead of a
+            # flat 1.1in — "Ho Chi Minh City" needs more room than "UK".
+            # Two-line country/city format (bold country + smaller city,
+            # modeled on Xebia's own PNB MetLife proposal deck) replaces
+            # the old country-only single line, which — combined with the
+            # tightly-clustered Western Europe hubs all reserving the same
+            # fixed-size box — produced overlapping labels there.
+            label_w = max(0.85, max(len(name), len(city)) * 0.062 + 0.14)
             label_x = dot_x + dx - (label_w / 2 if dx == 0 else 0)
-            _add_textbox(slide, label_x, dot_y + dy, label_w, 0.22,
+            label_y = dot_y + dy
+            _add_textbox(slide, label_x, label_y, label_w, 0.17,
                          name, 7, style.palette.primary, bold=True,
                          alignment=PP_ALIGN.CENTER, font_name=style.heading_font)
+            _add_textbox(slide, label_x, label_y + 0.155, label_w, 0.15,
+                         city, 5.5, style.body_color,
+                         alignment=PP_ALIGN.CENTER, font_name=style.body_font)
     else:
         add_world_map(slide, style.palette.primary)
 
@@ -1775,25 +1897,6 @@ def build_image_placeholder_slide(prs: Presentation, style: SlideStyle, title: s
 
 # ── ARCHITECTURE DIAGRAM (new engine) ─────────────────────────
 
-def build_architecture_diagram_slide(prs: Presentation, style: SlideStyle,
-                                     title: str, diagram: dict = None,
-                                     slide_number: int = 0) -> None:
-    """Render a multi-zone architecture diagram using the new diagram engine."""
-    from generation.diagrams.architecture_renderer import ArchitectureDiagramRenderer
-
-    slide = _add_slide(prs, "Content_Basic")
-    _apply_composition(slide, style)
-    _fill_ph(slide, 0, title, size=SZ_TITLE, color=style.title_color,
-             bold=True, font_name=style.heading_font)
-    _clear_body_ph(slide)
-
-    if not diagram:
-        diagram = {}
-
-    renderer = ArchitectureDiagramRenderer(slide, style, diagram)
-    renderer.render()
-
-
 # ── SERVICE GRID (new engine) ─────────────────────────────────
 
 def build_service_grid_slide(prs: Presentation, style: SlideStyle,
@@ -1826,7 +1929,7 @@ def build_migration_flow_slide(prs: Presentation, style: SlideStyle,
     slide = _add_slide(prs, "Content_Basic")
     _apply_composition(slide, style)
     _fill_ph(slide, 0, title, size=SZ_TITLE, color=style.title_color,
-             bold=True, font_name=style.heading_font)
+             bold=True, font_name=style.heading_font, autosize=True)
     _clear_body_ph(slide)
 
     if not diagram:
@@ -1852,7 +1955,6 @@ LAYOUT_BUILDERS = {
     "challenges": build_challenges_slide,
     "timeline": build_timeline_slide,
     "team": build_team_slide,
-    "architecture_diagram": build_architecture_diagram_slide,
     "service_grid": build_service_grid_slide,
     "migration_flow": build_migration_flow_slide,
 }
@@ -1913,9 +2015,6 @@ def build_slide_by_layout(prs: Presentation, layout: str, style: SlideStyle,
     elif layout == "team":
         builder(prs, style, title=data.get("title", ""),
                 team_members=data.get("members", []), slide_number=slide_number)
-    elif layout == "architecture_diagram":
-        builder(prs, style, title=data.get("title", ""),
-                diagram=data.get("diagram", {}), slide_number=slide_number)
     elif layout == "service_grid":
         builder(prs, style, title=data.get("title", ""),
                 diagram=data.get("diagram", {}), slide_number=slide_number)

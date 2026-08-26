@@ -13,7 +13,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from pptx.util import Inches, Pt, Emu
-from pptx.enum.shapes import MSO_SHAPE
+from pptx.enum.shapes import MSO_SHAPE, MSO_CONNECTOR
 from pptx.enum.text import PP_ALIGN
 from pptx.dml.color import RGBColor
 
@@ -21,9 +21,10 @@ from generation.design_engine.primitives import (
     rgb, add_rounded_rectangle, add_rectangle, gradient_fill,
     set_fill_opacity, set_dash_style, send_to_back,
 )
-from generation.design_engine.palette import PURPLE, NEUTRALS
+from generation.design_engine.palette import PURPLE, NEUTRALS, STAGE
 from generation.diagrams.diagram_primitives import (
     add_textbox, add_icon_placeholder, add_dashed_container,
+    add_horizontal_arrow,
 )
 
 try:
@@ -39,37 +40,20 @@ except Exception:
 
 # ── Zone color themes ─────────────────────────────────────────
 
+def _stage_zone_theme(stage: "type[STAGE]") -> dict:
+    """Build a ZONE_THEMES entry from a palette STAGE.* token — arrow
+    color always matches accent for the four pipeline-stage colors."""
+    return {
+        "border": stage.border, "bg": stage.bg, "group_bg": stage.group_bg,
+        "accent": stage.accent, "title": stage.title, "text": "#FFFFFF",
+        "label": stage.label, "arrow": stage.accent,
+    }
+
+
 ZONE_THEMES = {
-    "orange": {
-        "border": "#E07B20",
-        "bg": "#FEF6EE",
-        "group_bg": "#FFF8F0",
-        "accent": "#D4700F",
-        "title": "#C46A18",
-        "text": "#FFFFFF",
-        "label": "#B85C0A",
-        "arrow": "#D4700F",
-    },
-    "teal": {
-        "border": "#0E8B7B",
-        "bg": "#EFF9F8",
-        "group_bg": "#F0FAF9",
-        "accent": "#0D7A6B",
-        "title": "#0B7266",
-        "text": "#FFFFFF",
-        "label": "#0A6459",
-        "arrow": "#0D7A6B",
-    },
-    "blue": {
-        "border": "#2574A9",
-        "bg": "#EFF5FB",
-        "group_bg": "#F2F7FC",
-        "accent": "#1F6391",
-        "title": "#1E5F8A",
-        "text": "#FFFFFF",
-        "label": "#1B5680",
-        "arrow": "#1F6391",
-    },
+    "orange": _stage_zone_theme(STAGE.ORANGE),
+    "teal": _stage_zone_theme(STAGE.TEAL),
+    "blue": _stage_zone_theme(STAGE.BLUE),
     "purple": {
         "border": PURPLE.BRAND,
         "bg": PURPLE.BG,
@@ -80,16 +64,7 @@ ZONE_THEMES = {
         "label": PURPLE.BRAND,
         "arrow": PURPLE.BRAND,
     },
-    "green": {
-        "border": "#1E8449",
-        "bg": "#EEF8F2",
-        "group_bg": "#F2FAF5",
-        "accent": "#1A7840",
-        "title": "#196F3D",
-        "text": "#FFFFFF",
-        "label": "#166B37",
-        "arrow": "#1A7840",
-    },
+    "green": _stage_zone_theme(STAGE.GREEN),
     "dark": {
         "border": NEUTRALS.CHARCOAL,
         "bg": "#F5F5F7",
@@ -103,6 +78,40 @@ ZONE_THEMES = {
 }
 
 
+def _item_name(item) -> str:
+    """Bare technology/service name for icon lookup — a dict item's
+    "qualifier" is descriptive context, not part of the product name, so
+    it must never be passed to icon resolution."""
+    if isinstance(item, dict):
+        return item.get("name", "")
+    return str(item)
+
+
+def _icon_label_needs_2_lines(items: list, col_w: float) -> bool:
+    """Whether any item's label is long enough to wrap to a 2nd line at
+    the compact 5.5pt icon-label size and the given column width. Checks
+    actual rendered text length, not just "has a qualifier dict" — a
+    plain string the model wrote with its own long parenthetical (e.g.
+    "Fabric Pipelines (SSIS Replacement)") needs the same extra room a
+    structured qualifier does, confirmed by measuring real generated
+    output where exactly this shape of item overflowed."""
+    avg_char_w_in = 5.5 * 0.0072
+    chars_per_line = max(1, (col_w - 0.06) / avg_char_w_in)
+    return any(len(_item_label(it)) > chars_per_line for it in items)
+
+
+def _item_label(item) -> str:
+    """Display label for an item — plain string items render as-is;
+    {"name", "qualifier"} items render as "Name · qualifier", matching
+    the two-tier labeling convention found in Xebia's own enterprise-grade
+    reference decks (e.g. "Delta Lake · Unity Catalog-governed tables")."""
+    if isinstance(item, dict):
+        name = item.get("name", "")
+        qualifier = item.get("qualifier", "")
+        return f"{name} · {qualifier}" if qualifier else name
+    return str(item)
+
+
 class MigrationFlowRenderer:
     """Renders a multi-zone left-to-right architecture flow diagram."""
 
@@ -112,11 +121,39 @@ class MigrationFlowRenderer:
         self.data = diagram_data
 
         self.content_left = 0.25
-        self.content_top = 1.15
+        # content_top used to be a flat 1.15 constant, which put zone
+        # title badges (they straddle content_top, extending ~0.13in
+        # above it) directly inside the slide title placeholder's own
+        # vertical range — confirmed by measuring real rendered output.
+        # But the title placeholder's height varies by template (e.g.
+        # xebia_carrington's title bottoms out around y=1.4, xebia_retail
+        # and xebia_synapse extend to y=1.84-1.85), so a second flat
+        # constant would just be wrong for a different subset of
+        # templates. Read the actual title placeholder from this slide
+        # instead, and clear its real bottom edge plus a fixed margin.
+        self.content_top = self._safe_content_top(slide)
         self.content_width = 12.85
-        self.content_height = 6.00
+        # Bottom boundary (content_top + content_height) targets ~7.15in,
+        # regardless of where content_top landed — a taller title
+        # placeholder eats into available diagram height rather than
+        # pushing the diagram's bottom edge closer to the slide edge.
+        self.content_height = max(3.5, 7.15 - self.content_top)
         self.font = style.heading_font if hasattr(style, 'heading_font') else "Arial"
         self.body_font = style.body_font if hasattr(style, 'body_font') else "Arial"
+
+    @staticmethod
+    def _safe_content_top(slide) -> float:
+        """Bottom edge of this slide's title placeholder, plus margin —
+        falls back to a conservative 1.6in if there's no title
+        placeholder (idx 0) to read, or its geometry is missing."""
+        margin = 0.20
+        fallback = 1.60
+        try:
+            title_ph = slide.placeholders[0]
+            bottom = Emu(title_ph.top).inches + Emu(title_ph.height).inches
+            return max(fallback, bottom + margin)
+        except Exception:
+            return fallback
 
     # ── Public ────────────────────────────────────────────────
 
@@ -124,13 +161,16 @@ class MigrationFlowRenderer:
         zones = self.data.get("zones", [])
         bottom_bands = self.data.get("bottom_bands", [])
         journey_labels = self.data.get("journey_labels", [])
+        legend = self.data.get("legend", [])
+        divider = self.data.get("divider")
 
         if not zones:
             return
 
         bottom_h = len(bottom_bands) * 0.38 + (0.06 if bottom_bands else 0)
         journey_h = 0.32 if journey_labels else 0
-        max_zones_h = self.content_height - bottom_h - journey_h
+        legend_h = 0.22 if legend else 0
+        max_zones_h = self.content_height - bottom_h - journey_h - legend_h
 
         # Zone height used to be a fixed share of content_height regardless
         # of how much a zone actually holds — a zone with one small group
@@ -149,7 +189,7 @@ class MigrationFlowRenderer:
             default=max_zones_h,
         )
         zones_h = min(max(natural_h, 1.3), max_zones_h)
-        total_h = zones_h + journey_h + bottom_h
+        total_h = zones_h + journey_h + bottom_h + legend_h
 
         # Outer container — sized to what the diagram actually uses, not the
         # old fixed content_height budget, or shrinking the zones above just
@@ -191,6 +231,14 @@ class MigrationFlowRenderer:
                 )
                 x += arrow_gap + zone_spacing
 
+        if divider and zone_positions:
+            idx = max(0, min(divider.get("position_after_zone", 0),
+                             len(zone_positions) - 1))
+            zx, zw = zone_positions[idx]
+            divider_x = zx + zw + (arrow_gap + zone_spacing) / 2
+            self._draw_divider(divider_x, self.content_top, zones_h,
+                               divider.get("label", ""))
+
         if journey_labels:
             label_y = self.content_top + zones_h + 0.04
             self._draw_journey_labels(journey_labels, zone_positions,
@@ -199,6 +247,10 @@ class MigrationFlowRenderer:
         if bottom_bands:
             band_y = self.content_top + zones_h + journey_h + 0.02
             self._draw_bottom_bands(bottom_bands, band_y)
+
+        if legend:
+            legend_y = self.content_top + zones_h + journey_h + bottom_h + 0.04
+            self._draw_legend(legend, legend_y)
 
     # ── Content-height estimation ────────────────────────────
 
@@ -212,8 +264,13 @@ class MigrationFlowRenderer:
         if not items:
             items_h = 0.0
         elif style_hint == "icons":
-            item_total_h = 0.40 + 0.16 + 0.03
+            # Mirrors _draw_item_icons's row-height logic so the zone/
+            # group budget this feeds actually accounts for the extra
+            # room a long item needs — otherwise the fix in
+            # _draw_item_icons just moves the overflow into the group's
+            # own boundary instead of removing it.
             col_w = max(0.58, min(0.90, avail_w / min(len(items), 4)))
+            item_total_h = 0.40 + (0.30 if _icon_label_needs_2_lines(items, col_w) else 0.16) + 0.03
             cols = max(1, int(avail_w / col_w))
             rows = -(-len(items) // cols)
             items_h = rows * item_total_h
@@ -222,7 +279,7 @@ class MigrationFlowRenderer:
             max_pill_w = max(0.5, avail_w - 2 * gap_x)
             px, rows = 0.0, 1
             for item in items:
-                pill_w = min(max_pill_w, max(0.48, len(item) * 0.058 + 0.14))
+                pill_w = min(max_pill_w, max(0.48, len(_item_label(item)) * 0.058 + 0.14))
                 if px + pill_w > avail_w and px > 0:
                     rows += 1
                     px = 0.0
@@ -237,6 +294,20 @@ class MigrationFlowRenderer:
 
     def _estimate_zone_content_h(self, zone: dict, zone_w: float) -> float:
         """Total height a zone's title + groups actually need, plus padding."""
+        children = zone.get("children")
+        if children:
+            n = len(children)
+            ratios = [c.get("width_ratio", 1.0) for c in children]
+            total_ratio = sum(ratios) or 1.0
+            avail_w = max(0.2, zone_w - 0.16 - (n - 1) * 0.08)
+            child_widths = [(r / total_ratio) * avail_w for r in ratios]
+            inner_h = max(
+                (self._estimate_zone_content_h(c, cw)
+                 for c, cw in zip(children, child_widths)),
+                default=1.0,
+            )
+            return 0.30 + inner_h + 0.08  # this level's title/pad overhead
+
         groups = zone.get("groups", [])
         if not groups:
             return 1.3
@@ -252,7 +323,15 @@ class MigrationFlowRenderer:
 
     def _draw_zone(self, zone: dict, x: float, y: float, w: float, h: float):
         theme = ZONE_THEMES.get(zone.get("color", "purple"), ZONE_THEMES["purple"])
-        border_style = zone.get("border_style", "solid")
+        # A zone with a "boundary_type" (subscription/vnet/workspace) is an
+        # administrative/logical boundary, not a deployed component, so it
+        # defaults to a dashed border — matching the dashed=boundary /
+        # solid=component convention consistently used across Xebia's own
+        # reference decks (never the other way around). An explicit
+        # "border_style" always wins over the boundary_type default.
+        boundary_type = zone.get("boundary_type", "none")
+        border_style = zone.get("border_style") or (
+            "dashed" if boundary_type != "none" else "solid")
         pad = 0.08
 
         # Zone container with colored border
@@ -294,6 +373,19 @@ class MigrationFlowRenderer:
                         sub_w, 0.18, subtitle, 6, theme["title"],
                         bold=False, font_name=self.body_font)
 
+        # Nested boundary zones (subscription > VNet > subnet, etc.) —
+        # z-order + inset sizing reproduces real reference decks' visual
+        # nesting without a general recursive layout engine (§2.2): a
+        # single child reads as a smaller inset box (the concentric
+        # "subscription containing a VNet" look), multiple children read
+        # as adjacent named strips (the "Identity sub | Connectivity sub |
+        # Landing Zone sub" look) — same mechanism, just child count.
+        children = zone.get("children")
+        if children:
+            self._draw_children(children, x + pad, y + 0.30,
+                                w - pad * 2, h - 0.30 - pad)
+            return
+
         groups = zone.get("groups", [])
         if not groups:
             return
@@ -309,18 +401,60 @@ class MigrationFlowRenderer:
             gy = groups_y + i * (group_h + group_gap)
             self._draw_group(group, x + pad, gy, w - pad * 2, group_h, theme)
 
+    def _draw_children(self, children: list, x: float, y: float,
+                       w: float, h: float):
+        """Lay out nested child zones side-by-side within a parent
+        boundary, recursing through _draw_zone so each child can itself
+        have further children (arbitrary nesting depth), groups, or both."""
+        n = len(children)
+        if n == 0:
+            return
+        gap = 0.08
+        ratios = [c.get("width_ratio", 1.0) for c in children]
+        total_ratio = sum(ratios) or 1.0
+        total_gap = (n - 1) * gap
+        avail_w = max(0.2, w - total_gap)
+
+        cx = x
+        for child, ratio in zip(children, ratios):
+            cw = (ratio / total_ratio) * avail_w
+            self._draw_zone(child, cx, y, cw, h)
+            cx += cw + gap
+
     # ── Group ─────────────────────────────────────────────────
 
     def _draw_group(self, group: dict, x: float, y: float, w: float,
                     h: float, theme: dict):
-        # Dashed container for group
+        # Solid container for group — a group holds actual deployed
+        # components, not an administrative/logical boundary. Reference
+        # architecture decks consistently use dashed borders ONLY for
+        # boundary-type containers (subscription/VNet/workspace/on-prem
+        # divider) and solid for everything that's a real component; a
+        # group of icons/pills is the latter, so it defaults to solid.
+        # A group can still opt into a dashed boundary look via
+        # "border_style": "dashed" when it genuinely represents one.
+        #
+        # The card is drawn at its own natural content height, capped to
+        # the slice `h` it was allotted — not always stretched to fill
+        # that whole slice. `_draw_zone` divides a zone's height evenly
+        # across however many groups it has regardless of how much
+        # content each one holds, so a 2-item group next to a
+        # content-dense one used to get a card 30%+ taller than its
+        # content needed (confirmed by measuring real generated output).
+        # `h` itself — the slice — is untouched, so later groups in this
+        # zone still start where they always did; only this card's own
+        # drawn height shrinks to fit.
+        natural_h = self._estimate_group_h(group, w)
+        card_h = max(0.35, min(h, natural_h + 0.10))
+
         grp = add_rounded_rectangle(
-            self.slide, x, y, w, h,
+            self.slide, x, y, w, card_h,
             fill_color=theme["group_bg"],
             line_color=theme["border"],
             line_width=0.8,
         )
-        set_dash_style(grp, dash="dash", color=theme["border"], width=0.8)
+        if group.get("border_style") == "dashed":
+            set_dash_style(grp, dash="dash", color=theme["border"], width=0.8)
         set_fill_opacity(grp, 0.45)
 
         label = group.get("label", "")
@@ -335,7 +469,7 @@ class MigrationFlowRenderer:
             return
 
         items_y = y + label_h + 0.04
-        items_h = h - label_h - 0.10
+        items_h = card_h - label_h - 0.10
 
         style_hint = group.get("style", "text")
 
@@ -349,7 +483,7 @@ class MigrationFlowRenderer:
             self._draw_item_flow(items, x + 0.06, items_y,
                                  w - 0.12, items_h, theme)
         else:
-            items_text = " · ".join(items)
+            items_text = "  ·  ".join(_item_label(i) for i in items)
             add_textbox(self.slide, x + 0.06, items_y, w - 0.12, items_h,
                         items_text, 5.5, NEUTRALS.DARK_GRAY,
                         font_name=self.body_font)
@@ -362,15 +496,18 @@ class MigrationFlowRenderer:
             return
 
         icon_size = 0.40
-        label_h = 0.16
+        col_w = max(0.58, min(0.90, w / min(len(items), 4)))
+        # Grow the whole grid's row height when ANY item's label is long
+        # enough to wrap at this column width, so rows stay aligned —
+        # plain short items keep the original compact height otherwise.
+        label_h = 0.30 if _icon_label_needs_2_lines(items, col_w) else 0.16
         item_total_h = icon_size + label_h + 0.03
 
-        col_w = max(0.58, min(0.90, w / min(len(items), 4)))
         cols = max(1, int(w / col_w))
         remaining_space = w - cols * col_w
         gap_x = remaining_space / max(cols - 1, 1) if cols > 1 else 0
 
-        for i, item_name in enumerate(items):
+        for i, item in enumerate(items):
             col = i % cols
             row = i // cols
             ix = x + col * (col_w + gap_x)
@@ -381,12 +518,12 @@ class MigrationFlowRenderer:
 
             self._add_tech_icon(
                 ix + (col_w - icon_size) / 2, iy,
-                icon_size, item_name, theme,
+                icon_size, _item_name(item), theme,
             )
             add_textbox(self.slide,
                         ix, iy + icon_size + 0.03,
                         col_w, label_h,
-                        item_name, 5.5, NEUTRALS.DARK_GRAY,
+                        _item_label(item), 5.5, NEUTRALS.DARK_GRAY,
                         alignment=PP_ALIGN.CENTER,
                         font_name=self.body_font)
 
@@ -433,7 +570,8 @@ class MigrationFlowRenderer:
 
         px, py = x, y
         for item in items:
-            text_len = len(item)
+            label = _item_label(item)
+            text_len = len(label)
             pill_size = 5.5 if text_len <= 14 else max(4.5, 5.5 - 0.1 * (text_len - 14))
             pill_w = min(max_pill_w, max(0.48, text_len * 0.058 + 0.14))
 
@@ -448,7 +586,7 @@ class MigrationFlowRenderer:
                                   line_color=None)
             add_textbox(self.slide, px + 0.04, py + 0.02,
                         pill_w - 0.08, pill_h - 0.04,
-                        item, pill_size, "#FFFFFF", alignment=PP_ALIGN.CENTER,
+                        label, pill_size, "#FFFFFF", alignment=PP_ALIGN.CENTER,
                         font_name=self.body_font)
             px += pill_w + pill_gap_x
 
@@ -472,7 +610,7 @@ class MigrationFlowRenderer:
                                   fill_color=theme["accent"])
             add_textbox(self.slide, ix + 0.03, iy + 0.02,
                         item_w - 0.06, item_h - 0.04,
-                        item, 5, "#FFFFFF", alignment=PP_ALIGN.CENTER,
+                        _item_label(item), 5, "#FFFFFF", alignment=PP_ALIGN.CENTER,
                         font_name=self.body_font)
 
             if i < num - 1:
@@ -600,15 +738,87 @@ class MigrationFlowRenderer:
                         label_text, label_size, "#FFFFFF",
                         bold=True, font_name=self.font)
 
-            # Items
+            # Items — discrete boxes, one per named item, not a joined text
+            # string. Reference architecture decks consistently render
+            # cross-cutting governance/security items ("Purview", "Key
+            # Vault", "Entra ID"...) as equally-spaced individual boxes
+            # inside the band, not a comma/dot-separated line of text.
             items = band_data.get("items", [])
             if items:
                 items_x = label_x + label_w + 0.12
                 items_w = self.content_width - (items_x - self.content_left) - 0.08
-                items_text = "  ·  ".join(items)
-                add_textbox(self.slide, items_x, y + (band_h - 0.16) / 2,
-                            items_w, 0.16, items_text, 6, NEUTRALS.DARK_GRAY,
-                            font_name=self.body_font)
+                n = len(items)
+                gap = 0.06
+                item_w = min(2.2, max(0.5, (items_w - (n - 1) * gap) / n))
+                item_h = band_h - 0.14
+                iy = y + 0.07
+                for i, item in enumerate(items):
+                    ix = items_x + i * (item_w + gap)
+                    if ix + item_w > items_x + items_w + 0.02:
+                        break
+                    add_rounded_rectangle(self.slide, ix, iy, item_w, item_h,
+                                          fill_color="#FFFFFF",
+                                          line_color=color, line_width=0.75)
+                    label = _item_label(item)
+                    size = 6 if len(label) <= 16 else max(4.5, 6 - 0.08 * (len(label) - 16))
+                    add_textbox(self.slide, ix + 0.03, iy + (item_h - 0.16) / 2,
+                                item_w - 0.06, 0.16, label, size,
+                                NEUTRALS.DARK_GRAY, alignment=PP_ALIGN.CENTER,
+                                font_name=self.body_font)
+
+    # ── Legend ────────────────────────────────────────────────
+
+    def _draw_legend(self, legend: list, y: float):
+        """Bottom-left swatch + label row explaining the diagram's own
+        notation (e.g. dashed border = subscription/VNet boundary, solid
+        line = data flow). Only 2 of 16 audited Xebia reference decks use
+        a legend, but both are the most polished ("enterprise-grade")
+        diagrams in the corpus — cheap to add, add it only when the
+        diagram actually mixes boundary types or flow semantics, not by
+        default on every diagram."""
+        x = self.content_left + 0.06
+        swatch_w = 0.28
+        color = NEUTRALS.DARK_GRAY
+
+        for entry in legend:
+            symbol = entry.get("symbol", "solid")
+            label = entry.get("label", "")
+            mid_y = y + 0.08
+
+            if symbol == "dashed":
+                for tx in (x, x + 0.10, x + 0.20):
+                    add_rectangle(self.slide, tx, mid_y - 0.01, 0.05, 0.02,
+                                 fill_color=color)
+            elif symbol == "arrow":
+                add_horizontal_arrow(self.slide, x, mid_y, x + swatch_w,
+                                     color=color, thickness=0.02)
+            else:  # "solid" / "line" / default
+                add_rectangle(self.slide, x, mid_y - 0.01, swatch_w, 0.02,
+                              fill_color=color)
+
+            label_x = x + swatch_w + 0.06
+            label_w = max(0.4, len(label) * 0.045 + 0.1)
+            add_textbox(self.slide, label_x, y, label_w, 0.18,
+                        label, 6, color, font_name=self.body_font)
+            x = label_x + label_w + 0.22
+
+    # ── Divider ───────────────────────────────────────────────
+
+    def _draw_divider(self, x: float, y: float, h: float, label: str = ""):
+        """Vertical dashed divider line spanning the zones area — e.g. an
+        on-prem/Azure split. Reference decks (MOHESR slide 15) use exactly
+        this: a bare dashed line, not a container, to separate two regions
+        that don't otherwise get their own zone boundary."""
+        connector = self.slide.shapes.add_connector(
+            MSO_CONNECTOR.STRAIGHT, Inches(x), Inches(y), Inches(x), Inches(y + h),
+        )
+        set_dash_style(connector, dash="dash", color=NEUTRALS.MID_GRAY, width=1.25)
+
+        if label:
+            label_w = 1.3
+            add_textbox(self.slide, x - label_w / 2, y - 0.20, label_w, 0.16,
+                        label, 6, NEUTRALS.MID_GRAY, alignment=PP_ALIGN.CENTER,
+                        font_name=self.body_font)
 
     # ── Helpers ───────────────────────────────────────────────
 
