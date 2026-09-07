@@ -29,15 +29,27 @@ _TEXT_BOX_MARGIN_IN = 0.05  # approx internal L/R margin python-pptx textboxes u
 _LINE_HEIGHT_FACTOR = 1.22  # standard single-spaced line-height multiple of font size
 
 _WINDOWS_FONTS_DIR = Path(r"C:\Windows\Fonts")
-# Maps a (lowercased font name, bold) the renderer actually requests to the
-# real font file used to measure it. "Poppins"/other non-Windows fonts fall
-# back to Segoe UI's metrics as the closest reasonable proxy rather than
-# skipping measurement entirely — an approximate real measurement is still
-# far more accurate than a flat per-character guess.
+# Render/most Linux containers don't ship Arial/Calibri/Segoe UI at all
+# (they're proprietary Microsoft fonts) — fontconfig's metric-compatible
+# substitutes cover the two font families this renderer actually uses
+# (see Dockerfile: fonts-liberation, fonts-crosextra-carlito).
+_LIBERATION_DIR = Path("/usr/share/fonts/truetype/liberation2")
+_CARLITO_DIR = Path("/usr/share/fonts/truetype/crosextra")
+# Maps a (lowercased font name, bold) the renderer actually requests to an
+# ordered list of (directory, filename) candidates, tried in order until
+# one exists — the Windows original first (local dev), then its Linux
+# metric-compatible substitute (Render/containers). "Poppins"/other
+# non-Windows fonts fall back to Segoe UI's metrics as the closest
+# reasonable proxy rather than skipping measurement entirely — an
+# approximate real measurement is still far more accurate than a flat
+# per-character guess.
 _FONT_FILES = {
-    ("segoe ui", False): "segoeui.ttf", ("segoe ui", True): "segoeuib.ttf",
-    ("arial", False): "arial.ttf", ("arial", True): "arialbd.ttf",
-    ("calibri", False): "calibri.ttf", ("calibri", True): "calibrib.ttf",
+    ("segoe ui", False): ((_WINDOWS_FONTS_DIR, "segoeui.ttf"), (_LIBERATION_DIR, "LiberationSans-Regular.ttf")),
+    ("segoe ui", True): ((_WINDOWS_FONTS_DIR, "segoeuib.ttf"), (_LIBERATION_DIR, "LiberationSans-Bold.ttf")),
+    ("arial", False): ((_WINDOWS_FONTS_DIR, "arial.ttf"), (_LIBERATION_DIR, "LiberationSans-Regular.ttf")),
+    ("arial", True): ((_WINDOWS_FONTS_DIR, "arialbd.ttf"), (_LIBERATION_DIR, "LiberationSans-Bold.ttf")),
+    ("calibri", False): ((_WINDOWS_FONTS_DIR, "calibri.ttf"), (_CARLITO_DIR, "Carlito-Regular.ttf")),
+    ("calibri", True): ((_WINDOWS_FONTS_DIR, "calibrib.ttf"), (_CARLITO_DIR, "Carlito-Bold.ttf")),
 }
 _FALLBACK_FONT = ("segoe ui", False)
 
@@ -60,9 +72,13 @@ def _get_font(font_name: str, bold: bool):
         return None
     _pil_available = True
 
-    filename = _FONT_FILES.get(key) or _FONT_FILES.get(_FALLBACK_FONT)
-    font_path = _WINDOWS_FONTS_DIR / filename if filename else None
-    result = font_path if (font_path and font_path.exists()) else None
+    candidates = _FONT_FILES.get(key) or _FONT_FILES.get(_FALLBACK_FONT) or ()
+    result = None
+    for font_dir, filename in candidates:
+        candidate = font_dir / filename
+        if candidate.exists():
+            result = candidate
+            break
     _font_cache[key] = result
     return result
 

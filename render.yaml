@@ -1,0 +1,15 @@
+services:
+  - type: web
+    name: xebia-proposal-studio
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    plan: starter
+    healthCheckPath: /
+    envVars:
+      # Secrets — set actual values in the Render dashboard, not here.
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: PEXELS_API_KEY
+        sync: false

@@ -1,0 +1,34 @@
+.git/
+.claude/
+__pycache__/
+*.pyc
+.venv/
+venv/
+scratchpad/
+
+# Local-only generated/working files — not part of the deploy image.
+outputs/
+extracted/ppt/
+extracted/docx/
+extracted/pdf/
+data/image_cache/
+data/uploads/
+data/tech_icons/
+
+# Large local icon library (48MB, regeneratable via
+# scripts/build_icon_library.py) — not shipped; the renderer falls back
+# to plain colored-circle icons when this is absent.
+assets/icons/
+
+Documents/
+Documents.zip
+references/approved/
+references/restricted/
+templates/from_documents/
+
+.env
+.env.*
+!.env.example
+
+*.md
+!README.md

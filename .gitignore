@@ -34,8 +34,12 @@ outputs/
 proposals/working/
 proposals/review/
 
-# Extracted data (regeneratable)
-extracted/
+# Extracted data (regeneratable) — except the embedding store itself,
+# which IS the reference-content search index the live app depends on
+# and needs to ship inside the deploy image (see extracted/embeddings/).
+extracted/ppt/
+extracted/docx/
+extracted/pdf/
 
 # Database
 *.sql.bak
