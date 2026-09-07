@@ -11,7 +11,6 @@ from generation.design_engine.palette import (
 )
 from generation.design_engine.blueprints import (
     SlideBlueprint, BLUEPRINT_REGISTRY, get_blueprint,
-    get_blueprints_for_content_type,
 )
 from generation.design_engine.theme_generator import DesignTheme, generate_theme
 from generation.design_engine.variety_engine import enforce_variety
@@ -20,7 +19,6 @@ __all__ = [
     "PURPLE", "NEUTRALS", "GRADIENTS", "PURPLE_SPECTRUM",
     "ALL_APPROVED_BACKGROUNDS",
     "SlideBlueprint", "BLUEPRINT_REGISTRY", "get_blueprint",
-    "get_blueprints_for_content_type",
     "DesignTheme", "generate_theme",
     "enforce_variety",
 ]

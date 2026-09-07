@@ -609,36 +609,3 @@ def generate_text(prompt: str, max_tokens: int = 2000) -> str:
         messages=[{"role": "user", "content": prompt}],
     )
     return "".join(block.text for block in response.content if block.type == "text")
-
-
-def generate_section_content(section_type: str, context: str,
-                              references: list[dict] = None) -> dict:
-    """Generate content for a single proposal section."""
-    client = get_client()
-
-    ref_context = ""
-    if references:
-        snippets = [f"- {r.get('text', '')[:200]}" for r in references[:5]]
-        ref_context = "\nReference content:\n" + "\n".join(snippets)
-
-    prompt = f"""Generate content for a "{section_type}" section of a Xebia proposal.
-
-Context: {context}
-{ref_context}
-
-Return a JSON object with the section content. Include "title", "body" or "summary", and "bullets" or other relevant fields.
-Return ONLY valid JSON, no markdown."""
-
-    response = client.messages.create(
-        model=MODEL,
-        max_tokens=2000,
-        messages=[{"role": "user", "content": prompt}],
-    )
-
-    text = "".join(block.text for block in response.content if block.type == "text").strip()
-    if text.startswith("```"):
-        lines = text.split("\n")
-        lines = [l for l in lines if not l.strip().startswith("```")]
-        text = "\n".join(lines)
-
-    return json.loads(text)

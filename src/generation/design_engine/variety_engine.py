@@ -8,7 +8,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from generation.design_engine.blueprints import (
-    BLUEPRINT_REGISTRY, get_blueprint, get_light_blueprints,
+    BLUEPRINT_REGISTRY, get_blueprint,
 )
 
 if TYPE_CHECKING:

@@ -311,31 +311,6 @@ class IconLibrary:
         abbr, color = self.get_fallback(name)
         return icon, abbr, color
 
-    def list_available(self) -> list[str]:
-        available = []
-        for entry in self._registry:
-            eid = entry.get("id", "")
-            for key in ("png_path", "svg_path", "file_path"):
-                rel = entry.get(key, "")
-                if rel and (self.assets_dir / rel).exists():
-                    available.append(eid)
-                    break
-        return available
-
-    def list_missing(self) -> list[str]:
-        missing = []
-        for entry in self._registry:
-            eid = entry.get("id", "")
-            found = False
-            for key in ("png_path", "svg_path", "file_path"):
-                rel = entry.get(key, "")
-                if rel and (self.assets_dir / rel).exists():
-                    found = True
-                    break
-            if not found:
-                missing.append(eid)
-        return missing
-
     def stats(self) -> dict:
         categories: dict[str, dict] = {}
         for entry in self._registry:
@@ -364,5 +339,3 @@ class IconLibrary:
             "categories": categories,
         }
 
-    def reload(self):
-        self._load_registry()

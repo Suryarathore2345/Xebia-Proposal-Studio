@@ -48,19 +48,3 @@ def theme() -> dict:
 
 def copyright_text() -> str:
     return theme()["copyright_template"].format(year=datetime.now().year)
-
-
-def ppt_color(key: str) -> str:
-    """Get a PPT color by key, stripping the '#' for pptxgenjs compatibility."""
-    c = colors()["ppt"][key]
-    return c.lstrip("#")
-
-
-def docx_color(key: str) -> str:
-    """Get a DOCX color by key."""
-    return colors()["docx"][key]
-
-
-def hex_to_rgb(hex_color: str) -> tuple[int, int, int]:
-    h = hex_color.lstrip("#")
-    return (int(h[0:2], 16), int(h[2:4], 16), int(h[4:6], 16))

@@ -110,32 +110,6 @@ def add_horizontal_arrow(slide, x1, y, x2, color="#C00000", thickness=0.03):
     return head
 
 
-def add_vertical_arrow(slide, x, y1, y2, color="#C00000", thickness=0.03):
-    """Draw a vertical arrow from y1 to y2 at horizontal position x."""
-    if abs(y2 - y1) < 0.2:
-        return
-
-    going_down = y2 > y1
-    line_start = min(y1, y2)
-    line_end = max(y1, y2) - 0.15
-    line_h = line_end - line_start
-
-    if line_h > 0.05:
-        add_rectangle(slide, x - thickness / 2, line_start,
-                      thickness, line_h, fill_color=color)
-
-    head_y = (max(y1, y2) - 0.15) if going_down else min(y1, y2)
-    head = slide.shapes.add_shape(
-        MSO_SHAPE.ISOSCELES_TRIANGLE,
-        Inches(x - 0.06), Inches(head_y), Inches(0.12), Inches(0.15),
-    )
-    head.fill.solid()
-    head.fill.fore_color.rgb = rgb(color)
-    head.line.fill.background()
-    head.rotation = 180 if going_down else 0
-    return head
-
-
 def add_labeled_box(slide, x, y, w, h, label, sublabel="",
                     fill_color="#FFFFFF", border_color="#6C1D5F",
                     text_color="#333333", border_width=1.0,
@@ -160,30 +134,3 @@ def add_labeled_box(slide, x, y, w, h, label, sublabel="",
                         sublabel, 7, "#666666",
                         alignment=PP_ALIGN.CENTER, font_name=font_name)
     return shape
-
-
-def add_band(slide, left, top, width, height, label, items=None,
-             description="", fill_color="#F5EFF5", text_color="#333333",
-             accent_color="#6C1D5F", font_name="Arial"):
-    """Horizontal band with label on left and items/description on right."""
-    add_rounded_rectangle(slide, left, top, width, height,
-                          fill_color=fill_color)
-
-    label_w = min(1.8, width * 0.2)
-    add_rounded_rectangle(slide, left + 0.04, top + 0.04,
-                          label_w, height - 0.08,
-                          fill_color=accent_color)
-    add_textbox(slide, left + 0.08, top + (height - 0.20) / 2,
-                label_w - 0.08, 0.20, label, 7, "#FFFFFF",
-                bold=True, font_name=font_name)
-
-    items_x = left + label_w + 0.15
-    items_w = width - label_w - 0.25
-    if items:
-        items_text = "  ·  ".join(items)
-        add_textbox(slide, items_x, top + 0.04, items_w, height * 0.45,
-                    items_text, 7, text_color, font_name=font_name)
-    if description:
-        desc_y = top + (height * 0.45 if items else 0.04)
-        add_textbox(slide, items_x, desc_y, items_w, height * 0.45,
-                    description, 6, "#666666", font_name=font_name)

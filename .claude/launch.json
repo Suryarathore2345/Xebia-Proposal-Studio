@@ -4,8 +4,8 @@
     {
       "name": "dev",
       "runtimeExecutable": "py",
-      "runtimeArgs": ["-m", "uvicorn", "src.web.app:app", "--reload", "--port", "8001"],
-      "port": 8001
+      "runtimeArgs": ["-m", "uvicorn", "src.web.app:app", "--reload", "--port", "8000"],
+      "port": 8000
     }
   ]
 }

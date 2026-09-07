@@ -15,10 +15,8 @@ google-genai>=0.3.0
 # Document processing
 python-pptx>=1.0.0
 python-docx>=1.1.0
-markitdown[pptx]>=0.1.7
 Pillow>=10.0.0
 lxml>=5.0.0
-defusedxml>=0.7.1
 
 # Icon library build (scripts/build_icon_library.py) - rasterizes
 # downloaded SVG icons to PNG. cairosvg needs the native libcairo
@@ -27,9 +25,6 @@ defusedxml>=0.7.1
 # dependency) the script uses automatically when cairosvg can't load.
 cairosvg>=2.7.0
 resvg-py>=0.5.0
-
-# PDF
-PyPDF2>=3.0.0
 
 # Embeddings (local, zero-cost)
 sentence-transformers>=3.0.0

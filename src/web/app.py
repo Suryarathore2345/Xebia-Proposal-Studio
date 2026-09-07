@@ -1,5 +1,6 @@
 """FastAPI backend for Xebia Proposal Studio."""
 
+import asyncio
 import sys
 import uuid
 from pathlib import Path
@@ -76,7 +77,7 @@ async def list_templates():
 @app.post("/api/chat", response_model=ChatResponse)
 async def chat(req: ChatRequest):
     session = _get_or_create_session(req.session_id)
-    result = session.chat(req.message, provider=req.provider)
+    result = await asyncio.to_thread(session.chat, req.message, provider=req.provider)
 
     return ChatResponse(
         session_id=session.session_id,
@@ -102,7 +103,11 @@ async def generate(session_id: str, req: GenerateRequest = None):
     if formats not in ("pptx", "docx", "both"):
         raise HTTPException(400, "formats must be one of 'pptx', 'docx', 'both'")
 
-    result = session.generate(template_name=template_name, formats=formats)
+    result = await asyncio.to_thread(session.generate, template_name=template_name, formats=formats)
+    if "error" in result:
+        raise HTTPException(400, result["error"])
+    if not any(key in result for key in ("pptx", "docx")):
+        raise HTTPException(500, f"Generation failed for all requested formats: {result}")
     return GenerateResponse(session_id=session_id, files=result)
 
 
@@ -156,7 +161,7 @@ async def upload_images(
             continue
 
         image_id = uuid.uuid4().hex[:12]
-        ext = Path(f.filename).suffix or ".png"
+        ext = Path(f.filename).suffix if f.filename else ".png"
         save_name = f"{image_id}{ext}"
         save_path = session_dir / save_name
         save_path.write_bytes(data)

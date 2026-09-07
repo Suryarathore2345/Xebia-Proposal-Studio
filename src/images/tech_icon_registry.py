@@ -172,24 +172,6 @@ class TechIconRegistry:
             abbr = "".join(w[0] for w in words[:3]).upper()
         return abbr, "#6C1D5F"
 
-    def get_icon_or_fallback(self, name: str) -> tuple[Path | None, str, str]:
-        """Return (icon_path, abbreviation, brand_color).
-
-        icon_path is None if no icon file exists — caller should use
-        abbr + color to render a text-based placeholder.
-        """
-        icon = self.get_icon(name)
-        abbr, color = self.get_fallback(name)
-        return icon, abbr, color
-
-    def list_available(self) -> list[str]:
-        """List all technologies that have local icon files."""
-        available = []
-        for canonical, info in TECH_REGISTRY.items():
-            if self._find_local(canonical, info["cat"]):
-                available.append(canonical)
-        return available
-
     def _find_local(self, canonical: str, category: str) -> Path | None:
         """Search for an icon in the local library."""
         search_dirs = [

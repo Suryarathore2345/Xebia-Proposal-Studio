@@ -58,7 +58,7 @@ This flow traces every step from the moment a user types a proposal request to w
 
 1. **Embeds the query:** Uses `sentence-transformers/all-MiniLM-L6-v2` (a 384-dim local embedding model) to convert the user's text into a vector.
 
-2. **Loads the embedding store:** Reads `data/embeddings/embeddings.json` — a JSON file containing pre-computed embeddings of all reference slides and document sections.
+2. **Loads the embedding store:** Reads `extracted/embeddings/embeddings.json` — a JSON file containing pre-computed embeddings of all reference slides and document sections.
 
 3. **Computes cosine similarity:** Compares the query vector against every stored vector, filtering by minimum score (0.25).
 
@@ -350,7 +350,7 @@ Similar but section-based:
 - **Image count:** Counts embedded images
 - **Classification:** Detects industries, technologies, document type
 
-Output saved to: `data/extracted/{filename}.json`
+Output saved to: `extracted/ppt/{filename}.json` (PPTX) or `extracted/docx/{filename}.json` (DOCX)
 
 ---
 
@@ -364,14 +364,14 @@ Output saved to: `data/extracted/{filename}.json`
 # For PPTX extractions
 python -c "
 from src.retrieval.embedder import embed_pptx_extraction
-result = embed_pptx_extraction('data/extracted/NewFile.pptx.json')
+result = embed_pptx_extraction('extracted/ppt/NewFile.json')
 print(result)
 "
 
 # For DOCX extractions
 python -c "
 from src.retrieval.embedder import embed_docx_extraction
-result = embed_docx_extraction('data/extracted/NewFile.docx.json')
+result = embed_docx_extraction('extracted/docx/NewFile.json')
 print(result)
 "
 ```
@@ -386,7 +386,7 @@ The embedder (`src/retrieval/embedder.py`):
 
 4. **Generates embeddings:** Uses `all-MiniLM-L6-v2` (runs locally, no API needed) to encode each text chunk into a 384-dimensional vector. Batched at 32 items for efficiency.
 
-5. **Saves to store:** Appends the new entries to `data/embeddings/embeddings.json` with:
+5. **Saves to store:** Appends the new entries to `extracted/embeddings/embeddings.json` with:
    - `entity_type`: "slide" or "section"
    - `source_file`: Original filename
    - `entity_id`: Slide number or section index
@@ -438,7 +438,7 @@ New .pptx or .docx file
   pptx_extractor.py  or  docx_extractor.py
          │
          ▼
-  data/extracted/{file}.json
+  extracted/ppt|docx/{file}.json
   (structured text, metadata, classification)
          │
          ▼
@@ -446,7 +446,7 @@ New .pptx or .docx file
   embedder.py → all-MiniLM-L6-v2
          │
          ▼
-  data/embeddings/embeddings.json
+  extracted/embeddings/embeddings.json
   (384-dim vectors + metadata)
          │
          ▼
@@ -481,12 +481,14 @@ Doc_Creation_Tool/
 ├── .env                          # ANTHROPIC_API_KEY (never committed)
 ├── .claude/launch.json           # Dev server config for Claude Code
 ├── templates/
-│   ├── xebia_retail.pptx         # Primary Xebia template (30 layouts)
-│   ├── xebia_carrington.pptx     # Alternative template (56 layouts)
-│   └── xebia_synapse.pptx        # Another alternative (33 layouts)
+│   ├── xebia_retail.pptx         # Primary Xebia template
+│   └── from_documents/           # Other registry templates (xebia_synapse,
+│                                  # xebia_pnb, xebia_mohesr, xebia_carrington,
+│                                  # etc.) — see TEMPLATE_REGISTRY in
+│                                  # src/generation/template_engine.py
 ├── Documents/                    # Reference proposals for knowledge base
-├── data/
-│   ├── extracted/                # JSON extractions of reference docs
+├── extracted/
+│   ├── ppt/ , docx/              # JSON extractions of reference docs
 │   └── embeddings/               # Vector embedding store
 ├── outputs/
 │   ├── ppt/                      # Generated PPTX files

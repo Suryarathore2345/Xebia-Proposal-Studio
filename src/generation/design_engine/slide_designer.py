@@ -14,7 +14,6 @@ from dataclasses import dataclass, field
 
 from generation.design_engine.blueprints import (
     SlideBlueprint, BLUEPRINT_REGISTRY, get_blueprint,
-    get_blueprints_for_content_type, get_dark_blueprints,
 )
 from generation.design_engine.theme_generator import DesignTheme
 from generation.design_engine.variety_engine import enforce_variety

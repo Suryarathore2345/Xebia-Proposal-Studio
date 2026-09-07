@@ -349,17 +349,5 @@ def get_blueprint(blueprint_id: str) -> SlideBlueprint:
     return BLUEPRINT_REGISTRY.get(blueprint_id, BLUEPRINT_REGISTRY["white_full_accent_line"])
 
 
-def get_blueprints_for_content_type(content_type: str) -> list[SlideBlueprint]:
-    return [bp for bp in _BLUEPRINTS if content_type in bp.suitable_for]
-
-
-def get_light_blueprints() -> list[SlideBlueprint]:
-    return [bp for bp in _BLUEPRINTS if bp.is_light]
-
-
-def get_dark_blueprints() -> list[SlideBlueprint]:
-    return [bp for bp in _BLUEPRINTS if bp.is_dark]
-
-
 def get_blueprints_by_mood(mood: str) -> list[SlideBlueprint]:
     return [bp for bp in _BLUEPRINTS if bp.mood == mood]
